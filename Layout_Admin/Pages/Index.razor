@@ -1,0 +1,185 @@
+@page "/"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.JSInterop
+@using Layout_Admin.Service
+@using Layout_Admin.Model.DTO
+@inject IJSRuntime JSRuntime
+@inject DashboardService DashboardService
+@inject ReviewService ReviewService
+@inject UserService UserService
+
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
+    </div>
+
+    <div class="row">
+        <!-- Doanh thu hôm nay -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Doanh thu (hôm nay)</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@($"{todayRevenue?.RevenueToday:N0}₫")</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Đơn hàng hôm nay -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Đơn hàng (hôm nay)</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@orderCount?.OrderCountToday</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-shopping-cart fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Món bán chạy nhất -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Món bán chạy nhất</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@(bestSellingItem?.BestSellingItem ?? "Chưa có món ăn")</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-utensils fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Đánh giá trung bình -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Đánh giá trung bình</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@averageRating.ToString("0.0")</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-star fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Biểu đồ -->
+    <div class="row">
+        <!-- Doanh thu theo tuần -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-white">Doanh thu theo tuần</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-bar">
+                        <canvas id="revenueChart" style="height: 300px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top 5 món bán chạy -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-white">Top 5 món bán chạy</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-bar">
+                        <canvas id="popularDishesChart" style="height: 300px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RevenueTodayDTO? todayRevenue;
+    private OrderCountDTO? orderCount;
+    private BestSellingItemDTO? bestSellingItem;
+    private List<RevenueWeekDTO?> weeklyRevenue;
+    private List<TopSellingItemMonthlyDTO>? topSellingItems;
+    private RestaurantRatingDTO restaurantRating;
+    private int restaurantId; 
+    private double averageRating = 0;
+    private bool isFirstRender = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && isFirstRender)
+        {
+            isFirstRender = false;
+            await RenderRevenueChart();
+            await RenderPopularDishesChart();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await UserService.GetCurrentUserAsync();
+        if (user == null) return;
+        restaurantId = user.RestaurantID;
+        averageRating = await ReviewService.GetAverageRatingForRestaurantAsync(restaurantId);
+        todayRevenue = await DashboardService.GetTodayRevenueAsync(restaurantId);
+        orderCount = await DashboardService.GetOrderCountTodayAsync(restaurantId);
+        bestSellingItem = await DashboardService.GetBestSellingItemTodayAsync(restaurantId);
+        weeklyRevenue = await DashboardService.GetWeeklyRevenueAsync(restaurantId);
+        topSellingItems = await DashboardService.GetTopSellingItemMonthlyAsync(restaurantId);
+        await RenderRevenueChart();
+        await RenderPopularDishesChart(); 
+    }
+
+    private async Task RenderRevenueChart()
+    {
+        if (weeklyRevenue == null || !weeklyRevenue.Any()) return;
+
+        // Lọc bỏ phần tử null
+        var validItems = weeklyRevenue.Where(item => item != null).Select(item => item!).ToList();
+
+        // Sắp xếp theo thứ trong tuần (bắt đầu từ thứ 2, chủ nhật cuối cùng)
+        var orderedData = validItems
+            .OrderBy(item => item.OrderDate.DayOfWeek == DayOfWeek.Sunday ? 7 : (int)item.OrderDate.DayOfWeek)
+            .ToList();
+
+        var labels = orderedData.Select(i => i.DayOfWeek).ToArray();
+        var data = orderedData.Select(i => (double)i.Revenue).ToArray();
+
+        await JSRuntime.InvokeVoidAsync("renderRevenueChart", new { labels, data });
+    }
+
+    private async Task RenderPopularDishesChart()
+    {
+        if (topSellingItems == null) return;
+
+        var labels = topSellingItems.Select(i => i.ItemName).ToArray();
+        var data = topSellingItems.Select(i => i.QuantitySold).ToArray();
+
+        await JSRuntime.InvokeVoidAsync("renderPopularDishesChart", new
+        {
+            labels,
+            data
+        });
+    }
+}

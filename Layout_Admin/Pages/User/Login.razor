@@ -1,0 +1,100 @@
+@page "/login"
+<link href="css/login.css" rel="stylesheet" />
+@layout Layout_Admin.Shared.LoginLayout
+@using Layout_Admin.Model.DTO
+@using Layout_Admin.Service
+@using System.Reflection.Metadata
+@inject UserService UserService
+@inject NavigationManager Navigation
+
+
+@inject IJSRuntime JS
+
+<div class="login-container">
+    <!-- Image side -->
+    <div class="image-side">
+        <img src="https://placehold.co/800x550?text=Restaurant+Management&font=roboto" alt="Ảnh nền nhà hàng">
+        <div class="image-overlay">
+            <div class="logo"><i class="fas fa-utensils"></i></div>
+            <h2>HỆ THỐNG QUẢN LÝ NHÀ HÀNG</h2>
+            <p>Giải pháp quản lý toàn diện cho nhà hàng của bạn</p>
+        </div>
+    </div>
+
+    <!-- Form side -->
+    <div class="form-side">
+        <div class="header">
+            <h1>Chào mừng trở lại!</h1>
+            <p>Vui lòng đăng nhập để tiếp tục quản lý nhà hàng</p>
+        </div>
+
+        <EditForm Model="loginModel" OnValidSubmit="HandleLogin">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <div class="form-group">
+                <label for="email">Email</label>    
+                <div class="input-wrapper">
+                    <i class="fas fa-envelope input-icon"></i>
+                    <InputText id="email" @bind-Value="loginModel.Email" class="form-control" placeholder="Nhập email" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Mật khẩu</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-lock input-icon"></i>
+                    <InputText id="password" type="password" @bind-Value="loginModel.Password" class="form-control" placeholder="Nhập mật khẩu" />
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger text-center">@errorMessage</div>
+            }
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success text-center">@successMessage</div>
+            }
+
+            <div class="remember-me">
+                <InputCheckbox @bind-Value="rememberMe" />
+                <label>Ghi nhớ đăng nhập</label>
+            </div>
+            <br>
+            <button type="submit" class="btn">Đăng nhập</button>
+        </EditForm>
+
+        <div class="footer">
+            <p>Quên mật khẩu? <a href="/forgot-password">Nhấp vào đây</a></p>
+            <p>Chưa có tài khoản? <a href="/register">Đăng ký ngay</a></p>
+        </div>
+    </div>
+</div>
+@code {
+    private LoginDTO loginModel = new();
+    private string? errorMessage;
+    private string? successMessage;
+    private bool rememberMe = false;
+
+    private async Task HandleLogin()
+    {
+        errorMessage = null;
+        successMessage = null;
+
+        var result = await UserService.LoginAsync(loginModel);
+        if (result)
+        {
+            successMessage = "🎉 Đăng nhập thành công!";
+            await Task.Delay(1000);
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            errorMessage = "❌ Sai email hoặc mật khẩu.";
+        }
+    }
+    private async Task TogglePassword()
+    {
+        await JS.InvokeVoidAsync("togglePasswordVisibility");
+    }
+}
+

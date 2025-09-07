@@ -1,0 +1,129 @@
+@page "/register"
+@using Layout_Admin.Model.DTO
+@using Layout_Admin.Service
+@inject UserService UserService
+@inject NavigationManager Navigation
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white text-center py-3">
+                    <h4 class="mb-0 fw-bold">
+                        <i class="fas fa-user-plus me-2"></i> ĐĂNG KÝ TÀI KHOẢN
+                    </h4>
+                </div>
+                <div class="card-body p-4">
+                    <EditForm Model="registerModel" OnValidSubmit="HandleRegister">
+                        <DataAnnotationsValidator />
+
+                        <div class="mb-3">
+                            <label class="form-label">Họ và tên <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                <InputText class="form-control" @bind-Value="registerModel.Name" placeholder="Nhập họ và tên" />
+                            </div>
+                            <ValidationMessage For="@(() => registerModel.Name)" class="text-danger small" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Email <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                <InputText class="form-control" @bind-Value="registerModel.Email" placeholder="Nhập email" />
+                            </div>
+                            <ValidationMessage For="@(() => registerModel.Email)" class="text-danger small" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Mật khẩu <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                <InputText class="form-control" type="password" @bind-Value="registerModel.Password" placeholder="Nhập mật khẩu" />
+                            </div>
+                            <ValidationMessage For="@(() => registerModel.Password)" class="text-danger small" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Xác nhận mật khẩu <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                <InputText class="form-control" type="password" @bind-Value="confirmPassword" placeholder="Nhập lại mật khẩu" />
+                            </div>
+                            @if (!string.IsNullOrEmpty(passwordMismatchError))
+                            {
+                                <div class="text-danger small">@passwordMismatchError</div>
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Vai trò <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-user-tag"></i></span>
+                                <InputSelect class="form-select" @bind-Value="registerModel.Role">
+                                    <option value="">-- Chọn vai trò --</option>
+                                    <option value="Admin">Admin</option>
+                                    <option value="User">User</option>
+                                    <option value="Manager">Manager</option>
+                                </InputSelect>
+                            </div>
+                            <ValidationMessage For="@(() => registerModel.Role)" class="text-danger small" />
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger text-center">@errorMessage</div>
+                        }
+                        @if (!string.IsNullOrEmpty(successMessage))
+                        {
+                            <div class="alert alert-success text-center">@successMessage</div>
+                        }
+
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-user-plus me-2"></i> Đăng ký
+                            </button>
+                        </div>
+                    </EditForm>
+
+                    <div class="text-center mt-3">
+                        <p>Đã có tài khoản? <a href="/login" class="text-decoration-none text-primary">Đăng nhập</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private UserDTO registerModel = new();
+    private string confirmPassword = "";
+    private string? passwordMismatchError;
+    private string? errorMessage;
+    private string? successMessage;
+
+    private async Task HandleRegister()
+    {
+        errorMessage = null;
+        successMessage = null;
+        passwordMismatchError = null;
+
+        if (registerModel.Password != confirmPassword)
+        {
+            passwordMismatchError = "❗ Mật khẩu xác nhận không khớp.";
+            return;
+        }
+
+        var result = await UserService.RegisterAsync(registerModel);
+        if (result)
+        {
+            successMessage = "🎉 Đăng ký thành công! Vui lòng kiểm tra email để xác thực.";
+            await Task.Delay(1000);
+            Navigation.NavigateTo("/login");
+        }
+        else
+        {
+            errorMessage = "❌ Đã xảy ra lỗi trong quá trình đăng ký. Vui lòng thử lại.";
+        }
+    }
+}

@@ -1,0 +1,164 @@
+@page "/reviews"
+@using Layout_Admin.Model.DTO
+@using Layout_Admin.Models.DTO
+@using Layout_Admin.Service
+@inject ReviewService ReviewService
+@inject UserService UserService
+@inject MenuItemService MenuItemService
+
+@inject IJSRuntime JS
+    <!-- Đánh giá món ăn -->
+    <div class="row g-4 mb-5">
+    <!-- Đánh giá nhà hàng -->
+    <div class="col-12 col-md-6">
+        <div class="bg-white border rounded shadow-sm p-3 h-100">
+            <h5 class="text-danger fw-bold mb-3">⭐ Đánh giá nhà hàng (@reviews?.Count)</h5>
+            <div style="max-height: 500px; overflow-y: auto;">
+                @if (reviews == null)
+                {
+                    <p class="text-muted">Đang tải đánh giá...</p>
+                }
+                else if (!reviews.Any())
+                {
+                    <p class="text-muted">Chưa có đánh giá nào.</p>
+                }
+                else
+                {
+                    @foreach (var r in reviews)
+                    {
+                        <div class="border rounded p-3 mb-2 bg-light review-card">
+                            <div class="d-flex justify-content-between">
+                                <strong>@r?.UserName</strong>
+                                <span class="text-muted small">@r.ReviewDate.ToString("dd/MM/yyyy")</span>
+                            </div>
+                            <div class="text-warning mb-1">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    <i class="bi @(i <= r.Rating ? "bi-star-fill" : "bi-star")"></i>
+                                }
+                            </div>
+                            <p class="mb-0">@r.Comment</p>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Đánh giá món ăn -->
+    <div class="col-12 col-md-6">
+        <div class="bg-white border rounded shadow-sm p-3 h-100">
+            <h5 class="text-danger fw-bold mb-3">🍽️ Đánh giá món ăn (@dishReviews?.Count)</h5>
+            <div style="max-height: 500px; overflow-y: auto;">
+                @if (dishReviews == null)
+                {
+                    <p class="text-muted">Đang tải đánh giá món ăn...</p>
+                }
+                else if (!dishReviews.Any())
+                {
+                    <p class="text-muted">Chưa có đánh giá món ăn nào.</p>
+                }
+                else
+                {
+                    @foreach (var r in dishReviews)
+                    {
+                        var item = menuItems.FirstOrDefault(m => m.MenuItemID == r.MenuItemID);
+                        <div class="border rounded p-3 mb-2 bg-light review-card">
+                            <div class="d-flex justify-content-between">
+                                <strong>@r?.UserName</strong>
+                                <span class="text-muted small">@r.ReviewDate.ToString("dd/MM/yyyy")</span>
+                            </div>
+                            <span class="badge bg-info text-dark mb-2">Món: @item?.Name</span>
+                            <div class="text-warning mb-1">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    <i class="bi @(i <= r.Rating ? "bi-star-fill" : "bi-star")"></i>
+                                }
+                            </div>
+                            <p class="mb-0">@r.Comment</p>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+@code {
+   
+    [Parameter] public List<MenuItemResponseDTO> menuItems { get; set; } = new();
+
+    private List<ReviewResponseDTO>? reviews;
+    private List<ReviewResponseDTO>? dishReviews;
+    private UserResponseDTO? currentUser;
+    private ReviewRequestDTO newReview = new();
+    private bool showReviewOptions = false;
+    private bool showRestaurantForm = false;
+    private bool showDishForm = false;
+    private string? toastMessage;
+    private string? toastClass;
+    private int RestaurantId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = await UserService.GetCurrentUserAsync();
+        
+        RestaurantId = currentUser.RestaurantID;
+        Console.WriteLine($"RestaurantId: {RestaurantId}");
+        menuItems = await MenuItemService.GetAllMenuItemAsync(RestaurantId, null, null, 1, 100);
+        await LoadReviews();
+        newReview = new ReviewRequestDTO
+        {
+            RestaurantID = RestaurantId,
+            Rating = 5
+        };
+    }
+    private async Task LoadDishReviews()
+    {
+        dishReviews = new List<ReviewResponseDTO>();
+        foreach (var item in menuItems)
+        {
+            var reviewsOfDish = await ReviewService.GetReviewsByMenuItemIdAsync(item.MenuItemID);
+            if (reviewsOfDish != null)
+                dishReviews.AddRange(reviewsOfDish);
+        }
+    }
+    private async Task LoadReviews()
+    {
+        var allReviews = await ReviewService.GetReviewsByRestaurantIdAsync(RestaurantId);
+        reviews = allReviews.Where(r => r.MenuItemID == null || r.MenuItemID == 0).ToList();
+        dishReviews = allReviews.Where(r => r.MenuItemID > 0).ToList();
+    }
+    private void CloseModal()
+    {
+        showReviewOptions = false;
+        showRestaurantForm = false;
+        showDishForm = false;
+    }
+
+    private void ShowRestaurantReviewForm()
+    {
+        showRestaurantForm = true;
+        showReviewOptions = false;
+        newReview = new()
+        {
+            RestaurantID = RestaurantId,
+            Rating = 5
+        };
+    }
+
+    private void ShowDishReviewForm()
+    {
+        showDishForm = true;
+        showReviewOptions = false;
+        newReview = new()
+        {
+            RestaurantID = RestaurantId,
+            Rating = 5
+        };
+    }
+    private void ResetReviewForm()
+    {
+        showRestaurantForm = false;
+        showDishForm = false;
+    }
+}

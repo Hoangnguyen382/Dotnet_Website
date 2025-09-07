@@ -1,0 +1,11 @@
+@page "/"
+@inject NavigationManager Navigation
+
+<h3>Đang chuyển hướng...</h3>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Navigation.NavigateTo("/home", true);
+    }
+}

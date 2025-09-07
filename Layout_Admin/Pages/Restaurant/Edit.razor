@@ -1,0 +1,108 @@
+@page "/restaurant/edit/{id:int}"
+@using Layout_Admin.Model.DTO
+@using Layout_Admin.Service
+@inject RestaurantService RestaurantService
+@inject UploadService UploadService
+@inject NavigationManager Navigation
+
+<h3 class="mb-4 text-center">✏️ Cập Nhật Nhà Hàng</h3>
+
+<div class="card shadow p-4 mx-auto" style="max-width: 900px;">
+    <EditForm Model="restaurant" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="row g-4">
+            <div class="col-md-7">
+                <div class="form-floating mb-3">
+                    <InputText class="form-control" id="name" @bind-Value="restaurant.Name" placeholder="Tên nhà hàng" />
+                    <label for="name">Tên nhà hàng</label>
+                </div>
+
+                <div class="form-floating mb-3">
+                    <InputText class="form-control" id="address" @bind-Value="restaurant.Address" placeholder="Địa chỉ" />
+                    <label for="address">Địa chỉ</label>
+                </div>
+
+                <div class="form-floating mb-3">
+                    <InputText class="form-control" id="phone" @bind-Value="restaurant.PhoneNumber" placeholder="Số điện thoại" />
+                    <label for="phone">Số điện thoại</label>
+                </div>
+
+                <div class="form-floating mb-3">
+                    <InputText class="form-control" id="hours" @bind-Value="restaurant.OpeningHours" placeholder="Giờ mở cửa" />
+                    <label for="hours">Giờ mở cửa</label>
+                </div>
+
+                <div class="form-floating mb-3">
+                    <InputTextArea class="form-control" style="height: 100px" id="description" @bind-Value="restaurant.Description" placeholder="Mô tả" />
+                    <label for="description">Mô tả</label>
+                </div>
+
+                <div class="form-check form-switch mb-3">
+                    <InputCheckbox class="form-check-input" id="isActive" @bind-Value="restaurant.IsActive" />
+                    <label class="form-check-label" for="isActive">Đang hoạt động</label>
+                </div>
+
+                <button type="submit" class="btn btn-success mt-2 w-100">✅ Cập Nhật</button>
+            </div>
+
+            <div class="col-md-5 d-flex flex-column align-items-center justify-content-start">
+                <label class="form-label fw-bold">Logo nhà hàng:</label>
+                <InputFile OnChange="UploadLogo" class="form-control mb-3" />
+                @if (!string.IsNullOrEmpty(restaurant.LogoUrl))
+                {
+                    <img src="@restaurant.LogoUrl" class="img-thumbnail" style="max-width: 200px;" />
+                }
+                else
+                {
+                    <div class="border rounded p-3 text-muted text-center" style="width: 200px;">
+                        Chưa có logo
+                    </div>
+                }
+            </div>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [Parameter] public int id { get; set; }
+    private RestaurantRequestDTO restaurant = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await RestaurantService.GetRestaurantByIdAsync(id);
+        if (result != null)
+        {
+            restaurant = new RestaurantRequestDTO
+            {
+                Name = result.Name,
+                Address = result.Address,
+                PhoneNumber = result.PhoneNumber,
+                OpeningHours = result.OpeningHours,
+                Description = result.Description,
+                LogoUrl = result.LogoUrl,
+                IsActive = result.IsActive
+            };
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        var success = await RestaurantService.UpdateRestaurantAsync(id, restaurant);
+        if (success)
+        {
+            Navigation.NavigateTo("/restaurant");
+        }
+    }
+
+    private async Task UploadLogo(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        var result = await UploadService.UploadImageAsync(file);
+        if (!string.IsNullOrEmpty(result))
+        {
+            restaurant.LogoUrl = result;
+        }
+    }
+}

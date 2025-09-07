@@ -1,0 +1,217 @@
+@page "/orders"
+@using Layout_Admin.Model.DTO
+@using Layout_Admin.Service
+@inject MenuItemService MenuItemService
+
+@inject UserService UserService
+@inject OrderService OrderService
+@inject IJSRuntime JS
+
+<h3 class="text-center mb-4">🧾 Danh sách đơn hàng của bạn</h3>
+
+@if (orders == null)
+{
+    <div class="text-center text-secondary">Đang tải đơn hàng...</div>
+}
+else if (!orders.Any())
+{
+    <div class="text-center text-muted">Bạn chưa có đơn hàng nào.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover table-bordered shadow-sm rounded">
+            <thead class="table-primary text-center">
+                <tr>
+                    <th>Mã Đơn</th>      
+                    <th>SDT</th>
+                    <th>Địa chỉ</th>
+                    <th>Ngày đặt</th>
+                    <th>Tổng Tiền</th>
+                    <th>Thanh toán</th>
+                    <th>Ghi chú</th>
+                    <th>Trạng thái</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var order in orders)
+                {
+                    <tr class="align-middle text-center">
+                        <td>@order.OrderID</td>
+                        <td>@order.PhoneNumber</td>
+                        <td>@order.DeliveryAddress</td>
+                        <td>@order.OrderDate.ToString("dd/MM/yyyy")</td>
+                        <td class="text-danger fw-bold">@order.TotalAmount.ToString("N0") đ</td>
+                        <td>@order.PaymentMethod</td>
+                        <td>@order.Note</td>
+                        <td>
+                            <select class="form-select form-select-sm"
+                                @onchange="async e => await UpdateStatusAsync(order.OrderID, e.Value.ToString())">
+                                @foreach (var status in GetNextPossibleStatuses(order.Status))
+                                {
+                                    <option value="@status" selected="@(status == order.Status)">@status</option>
+                                }
+                            </select>
+
+                        </td>
+                        <td class="d-flex flex-column gap-1">
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => ShowOrderDetails(order.OrderID)">
+                                Xem chi tiết
+                            </button>
+                            
+                            
+                        </td>
+                    </tr>
+                }
+            </tbody>
+
+        </table>
+    </div>
+}
+
+<!-- Modal hiển thị chi tiết đơn hàng -->
+@if (selectedOrderDetails != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">🛒 Chi tiết đơn hàng #@selectedOrderId</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light text-center">
+                            <tr>
+                                <th>Tên món</th>
+                                <th>Hình Ảnh</th>
+                                <th>Số lượng</th>
+                                <th>Đơn giá</th>
+                                <th>Thành tiền</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in selectedOrderDetails)
+                            {
+                                <tr>
+                                    <td>@item.MenuItemName</td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <img src="@item.ImageUrl" alt="@item.MenuItemName" style="width: 40px; height: 40px; object-fit: cover;" class="rounded" />
+                                        </div>
+                                    </td>
+                                    <td class="text-center">@item.Quantity</td>
+                                    <td class="text-end">@item.UnitPrice.ToString("N0") đ</td>
+                                    <td class="text-end text-danger fw-semibold">
+                                        @((item.UnitPrice * item.Quantity).ToString("N0")) đ
+                                    </td>
+                                </tr>
+                            }
+                            <tr class="fw-bold">
+                                <td colspan="4" class="text-end">Tổng cộng:</td>
+                                <td class="text-end text-danger">
+                                    @selectedOrderDetails.Sum(i => i.UnitPrice * i.Quantity).ToString("N0") đ
+                                </td>
+                            </tr>
+                        </tbody>
+
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseModal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<OrderResponseDTO>? orders;
+    private OrderRequestDTO? orderRequest;
+    private List<OrderDetailResponseDTO>? selectedOrderDetails;
+    private int selectedOrderId;
+    private int restaurantId { get; set; }
+    private List<string> statuses = new() { "Pending", "Processing", "Completed" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (restaurantId == 0)
+        {
+            var user = await UserService.GetCurrentUserAsync();
+            if (user == null || user.RestaurantID == null)
+            {
+                await JS.InvokeVoidAsync("alert", "Không thể xác định nhà hàng!");
+                return;
+            }
+            restaurantId = user.RestaurantID;
+        }
+        orders = await OrderService.GetOrderByRestaurantIdAsync(restaurantId);
+        StateHasChanged();
+    }
+    private async Task ShowOrderDetails(int orderId)
+    {
+        selectedOrderId = orderId;
+
+        var details = await OrderService.GetOrderDetailByOrderIdAsync(orderId);
+        selectedOrderDetails = new();
+
+        foreach (var item in details)
+        {
+            var menuItem = await MenuItemService.GetByIdAsync(item.MenuItemID);
+            selectedOrderDetails.Add(new OrderDetailResponseDTO
+            {
+                MenuItemID = item.MenuItemID,
+                MenuItemName = menuItem?.Name ?? $"Món #{item.MenuItemID}",
+                ImageUrl = menuItem?.ImageUrl,
+                Quantity = item.Quantity,
+                UnitPrice = item.UnitPrice
+            });
+        }
+    }
+    private async Task UpdateStatusAsync(int orderId, string newStatus)
+    {
+        var order = orders.FirstOrDefault(o => o.OrderID == orderId);
+        if (order == null)
+        {
+            await JS.InvokeVoidAsync("alert", "Không tìm thấy đơn hàng");
+            return;
+        }
+
+        var updateDto = new OrderRequestDTO
+        {
+            DeliveryAddress = order.DeliveryAddress,
+            PhoneNumber = order.PhoneNumber,
+            PaymentMethod = order.PaymentMethod,
+            PaymentStatus = order.PaymentStatus,
+            Note = order.Note,
+            Status = newStatus
+        };
+
+        var result = await OrderService.UpdateOrderAsync(orderId, updateDto);
+        if (result)
+        {
+            order.Status = newStatus; // Cập nhật trong UI
+            await JS.InvokeVoidAsync("alert", $"✅ Trạng thái đơn hàng #{orderId} đã cập nhật thành: {newStatus}");
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", "❌ Cập nhật thất bại");
+        }
+    }
+    private List<string> GetNextPossibleStatuses(string currentStatus)
+    {
+        return currentStatus switch
+        {
+            "Pending" => new() { "Pending", "Processing" },
+            "Processing" => new() { "Processing", "Complete" },
+            "Complete" => new() { "Complete" }, 
+            _ => new() { currentStatus }
+        };
+    }
+    private void CloseModal()
+    {
+        selectedOrderDetails = null;
+    }
+}
+

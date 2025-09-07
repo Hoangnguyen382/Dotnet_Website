@@ -1,0 +1,107 @@
+@using Layout_Client.Model.DTO
+@using Layout_Client.Service
+@inject UserService UserService
+@inject CartService CartService
+
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<nav class="navbar bg-white shadow-sm py-3">
+    <div class="container d-flex justify-content-between align-items-center">
+        <a class="navbar-brand fw-bold fs-4 text-primary" href="/home">FoodDeluxe</a>
+
+        <ul class="navbar-nav flex-row gap-4">
+            <li class="nav-item">
+                <a class="nav-link @(IsActive("/home"))" href="/home">Trang chủ</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @(IsActive("/restaurants"))" href="/restaurants">Nhà hàng</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @(IsActive("/deals"))" href="/deals">Ưu đãi</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @(IsActive("/about"))" href="/about">Về chúng tôi</a>
+            </li>
+        </ul>
+
+        <div class="d-flex align-items-center gap-3">
+            <a href="/cart" class="btn btn-link position-relative">
+                <i class="bi bi-cart3 fs-4 text-dark"></i>
+                @if (cartItemCount > 0)
+                {
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                        @cartItemCount
+                    </span>
+                }
+            </a>
+
+
+
+            <div class="dropdown me-2">
+                <button class="btn btn-link p-0 border-0 dropdown-toggle" @onclick="HandleUserClick" @onclick:stopPropagation="true" data-bs-toggle="dropdown">
+                    <i class="bi bi-person-circle fs-4 text-dark"></i>
+                </button>
+
+                @if (currentUser != null)
+                {
+                    <ul class="dropdown-menu dropdown-menu-end shadow">
+                        <li><a class="dropdown-item" href="/orders">Lịch sử mua hàng</a></li>
+                        <li><a class="dropdown-item" href="/change-password">Đổi mật khẩu</a></li>
+                        <li><hr class="dropdown-divider" /></li>
+                        <li><button class="dropdown-item text-danger" @onclick="HandleLogout">Đăng xuất</button></li>
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+</nav>
+
+@code {
+    private UserResponseDTO? currentUser;
+    private int cartItemCount = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUser = await UserService.GetCurrentUserAsync();
+        var cart = await CartService.GetCartAsync();
+        cartItemCount = cart.Sum(i => i.Quantity);
+        StateHasChanged();
+        CartService.CartChanged += OnCartChanged;
+    }
+    private void OnCartChanged()
+    {
+        InvokeAsync(async () =>
+        {
+            var cart = await CartService.GetCartAsync();
+            cartItemCount = cart.Sum(i => i.Quantity);
+            StateHasChanged();
+        });
+    }
+    private async Task HandleLogout()
+    {
+        await CartService.ClearCartAsync();
+        await UserService.LogoutAsync();
+        cartItemCount = 0;
+        StateHasChanged();
+        Navigation.NavigateTo("/login", true);
+    }
+
+    private void HandleUserClick()
+    {
+        if (currentUser == null)
+        {
+            Navigation.NavigateTo("/login");
+        }
+    }
+
+    private string IsActive(string path)
+    {
+        var currentPath = Navigation.Uri.Replace(Navigation.BaseUri, "/");
+        return currentPath.StartsWith(path, StringComparison.OrdinalIgnoreCase) ? "active fw-bold text-primary" : "";
+    }
+    public void Dispose()
+    {
+        CartService.CartChanged -= OnCartChanged;
+    }
+}

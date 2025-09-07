@@ -1,0 +1,118 @@
+@page "/restaurant"
+@attribute [Authorize]
+@using Layout_Admin.Model.DTO
+@using Layout_Admin.Service
+@using Microsoft.AspNetCore.Authorization
+@inject RestaurantService RestaurantService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="text-primary fw-bold">
+            <i class="fas fa-store-alt me-2"></i>Quản lý nhà hàng
+        </h3>
+        <button class="btn btn-success" @onclick='() => Navigation.NavigateTo("/restaurant/create")'>
+            <i class="fas fa-plus me-2"></i>Thêm nhà hàng
+        </button>
+    </div>
+
+    @if (restaurants == null)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-2">Đang tải dữ liệu...</p>
+        </div>
+    }
+    else if (restaurants.Count == 0)
+    {
+        <div class="alert alert-warning">Không có nhà hàng nào phù hợp.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle shadow-sm">
+                <thead class="table-light">
+                    <tr class="text-center">
+                        <th>Logo</th>
+                        <th>Tên</th>
+                        <th>Địa chỉ</th>
+                        <th>SĐT</th>
+                        <th>Giờ mở cửa</th>
+                        <th>Mô tả</th>
+                        <th>Trạng thái</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in restaurants)
+                    {
+                        <tr class="text-center">
+                            <td>
+                                <img src="@r.LogoUrl" alt="Logo" width="60" height="60" class="rounded-circle border" style="object-fit: cover;" />
+                            </td>
+                            <td class="fw-semibold">@r.Name</td>
+                            <td>@r.Address</td>
+                            <td>@r.PhoneNumber</td>
+                            <td>@r.OpeningHours</td>
+                            <td class="text-truncate" style="max-width: 200px;">@r.Description</td>
+                            <td>
+                                <span class="badge rounded-pill @(r.IsActive ? "bg-success" : "bg-secondary")">
+                                    @(r.IsActive ? "Hoạt động" : "Tạm ngưng")
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-primary" title="Chỉnh sửa" @onclick='() => Navigation.NavigateTo($"/restaurant/edit/{r.RestaurantID}")'>
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" title="Xoá" @onclick="() => DeleteRestaurant(r.RestaurantID)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private List<RestaurantResponseDTO>? restaurants;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            restaurants = await RestaurantService.GetAllRestaurantsByUserAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Lỗi khi gọi API: " + ex.Message);
+        }
+    }
+
+    private async Task DeleteRestaurant(int id)
+    {
+        bool confirm = await JS.InvokeAsync<bool>("confirm", "Bạn có chắc chắn muốn xoá nhà hàng này?");
+        if (confirm)
+        {
+            var result = await RestaurantService.DeleteRestaurantAsync(id);
+            if (result)
+            {
+                await LoadData();
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", "Xoá thất bại.");
+            }
+        }
+    }
+}

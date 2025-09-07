@@ -1,0 +1,53 @@
+﻿@using Layout_Admin.Service
+@inject UserService UserService
+@inject NavigationManager Navigation
+
+<div class="w-68 bg-white shadow-lg fixed h-full overflow-y-auto z-10">
+   <div class="p-5 flex items-center justify-center border-b">
+        <div class="flex items-center gap-2">
+            <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/274b27b6-3ddc-4948-8bb2-821018f0d60a.png" class="w-10 h-10" />
+            <div class="text-xl font-bold text-gray-800">Bếp <span class="text-yellow-600">Master</span></div>
+        </div>
+    </div>
+
+    <div class="p-4 no-underline">
+        <div class="text-xs uppercase text-gray-400 font-semibold mb-2">Menu chính</div>
+        <NavLink href="/" Match="NavLinkMatch.All" class="menu-item" activeClass="active">
+            <i class="fas fa-tachometer-alt mr-3"></i> Dashboard
+        </NavLink>
+        <NavLink href="/restaurant" class="menu-item" activeClass="active">
+            <i class="fas fa-store mr-3"></i> Quản lý Nhà hàng
+        </NavLink>
+        <NavLink href="/table" class="menu-item" activeClass="active">
+            <i class="fas fa-table mr-3"></i> Đặt Bàn
+        </NavLink>
+        <NavLink href="/menuitems" class="menu-item" activeClass="active">
+            <i class="fas fa-utensils mr-3"></i> Món Ăn
+        </NavLink>
+        <NavLink href="/promocodes" class="menu-item" activeClass="active">
+            <i class="fas fa-ticket-alt mr-3"></i> Mã Giảm Giá
+        </NavLink>
+        <NavLink href="/orders" class="menu-item" activeClass="active">
+            <i class="fas fa-shopping-cart mr-3"></i> Đơn hàng
+        </NavLink>
+        <NavLink href="/reviews" class="menu-item" activeClass="active">
+            <i class="fas fa-star mr-3"></i> Đánh Giá
+        </NavLink>
+        <NavLink href="/staff-management" class="menu-item" activeClass="active">
+            <i class="fas fa-users mr-3"></i> Nhân viên
+        </NavLink>
+
+        <div class="text-xs uppercase text-gray-400 font-semibold mt-4 mb-2">Cài đặt</div>
+        <button @onclick="Logout" class="menu-item text-red-600 hover:text-red-700">
+            <i class="fas fa-sign-out-alt mr-3"></i> Đăng xuất
+        </button>
+    </div>
+</div>
+
+@code {
+    private async Task Logout()
+    {
+        await UserService.LogoutAsync();
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+}

@@ -1,0 +1,356 @@
+@page "/menuitems"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Layout_Admin.Models.DTO
+@using Layout_Admin.Service
+@inject MenuItemService MenuItemService
+@inject UploadService UploadService
+@inject UserService UserService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<!-- Toast container -->
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1055">
+    @if (!string.IsNullOrEmpty(toastMessage))
+    {
+        <div class="toast show align-items-center text-white @toastClass border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">@toastMessage</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="() => toastMessage = null"></button>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="text-primary"><i class="fas fa-utensils me-2"></i>Quản lý món ăn</h3>
+        <button class="btn btn-success" @onclick="OpenCreateModal">
+            <i class="fas fa-plus me-2"></i>Thêm món ăn
+        </button>
+    </div>
+
+    <!-- Search/filter -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-5">
+            <input class="form-control shadow-sm" @bind="searchTerm" placeholder="🔍 Tìm tên món..." />
+        </div>
+        <div class="col-md-4">
+            <select class="form-select shadow-sm" @bind="selectedCategoryId">
+                <option value="">📂 Tất cả danh mục</option>
+                @foreach (var category in categories)
+                {
+                    <option value="@category.CategoryID">@category.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3 d-grid">
+            <button class="btn btn-primary" @onclick="Search">
+                <i class="fas fa-search me-2"></i>Tìm kiếm
+            </button>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-2">Đang tải dữ liệu...</p>
+        </div>
+    }
+    else if (items is null || items.Count == 0)
+    {
+        <div class="alert alert-info">Không tìm thấy món ăn nào phù hợp.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle shadow-sm">
+                <thead class="table-light">
+                    <tr class="align-middle text-center">
+                        <th>Ảnh</th>
+                        <th>Tên món</th><th>Mô tả</th><th>Danh mục</th>
+                        <th>Giá gốc</th><th>Giá Khuyễn Mãi</th><th>Giá Bán</th><th>Trạng thái</th><th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in items)
+                    {
+                        <tr class="text-center">
+                            <td>
+                                @if (!string.IsNullOrEmpty(item.ImageUrl))
+                                {
+                                    <img src="@item.ImageUrl" alt="@item.Name" class="rounded" width="70" height="70" style="object-fit: cover;" />
+                                }
+                                else
+                                {
+                                    <div class="text-muted fst-italic">Không có</div>
+                                }
+                            </td>
+                            <td>@item.Name</td>
+                            <td class="text-start">@item.Description</td>
+                            <td>@(categories.FirstOrDefault(c => c.CategoryID == item.CategoryID)?.Name ?? "-")</td>
+                            <td>@item.Price.ToString("N0") đ</td>
+                            <td>@(item.DiscountPrice?.ToString("N0") + " đ" ?? "-")</td>
+                            <td>@item.SellingPrice.ToString("N0") đ</td>
+                            <td>
+                                <span class="badge rounded-pill @(item.IsAvailable ? "bg-success" : "bg-secondary")">
+                                    @(item.IsAvailable ? "Còn bán" : "Ngừng bán")
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-primary" title="Chỉnh sửa" @onclick="async () => await OpenEditModal(item.MenuItemID)">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" title="Xóa" @onclick="() => ConfirmDelete(item.MenuItemID)">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                    <button class="page-link" @onclick="PreviousPage">← Trước</button>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link">Trang @currentPage</span>
+                </li>
+                <li class="page-item">
+                    <button class="page-link" @onclick="NextPage">Sau →</button>
+                </li>
+            </ul>
+        </nav>
+    }
+
+    <!-- Modal Form for Create/Edit -->
+    @if (showModal)
+    {
+        <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">@modalTitle</h5>
+                        <button type="button" class="btn-close btn-close-white" @onclick="CloseModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        @if (isModalLoading)
+                        {
+                            <div class="text-center">
+                                <div class="spinner-border"></div>
+                                <p class="mt-2">Đang tải dữ liệu...</p>
+                            </div>
+                        }
+                        else
+                        {
+                        <EditForm Model="menuItemRequest" OnValidSubmit="SubmitMenuItem">
+                            <DataAnnotationsValidator />
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-uppercase">Tên món <span class="text-danger">*</span></label>
+                                    <InputText class="form-control" @bind-Value="menuItemRequest.Name" required />
+                                    <ValidationMessage For="@(() => menuItemRequest.Name)" class="text-danger small" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label text-uppercase">Danh mục <span class="text-danger">*</span></label>
+                                    <InputSelect class="form-select" @bind-Value="menuItemRequest.CategoryID">
+                                        <option value="">-- Chọn danh mục --</option>
+                                        @foreach (var c in categories)
+                                        {
+                                            <option value="@c.CategoryID">@c.Name</option>
+                                        }
+                                    </InputSelect>
+                                    <ValidationMessage For="@(() => menuItemRequest.CategoryID)" class="text-danger small" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label text-uppercase">Giá gốc <span class="text-danger">*</span></label>
+                                    <InputNumber class="form-control" @bind-Value="menuItemRequest.Price" required />
+                                    <ValidationMessage For="@(() => menuItemRequest.Price)" class="text-danger small" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label text-uppercase">Giá KM</label>
+                                    <InputNumber class="form-control" @bind-Value="menuItemRequest.DiscountPrice" />
+                                </div>
+                                
+                                <div class="col-12">
+                                    <label class="form-label text-uppercase">Mô tả</label>
+                                    <InputTextArea class="form-control" rows="3" @bind-Value="menuItemRequest.Description" />
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label text-uppercase">Hình ảnh</label>
+                                    <InputFile OnChange="UploadLogo" class="form-control" />
+                                    @if (!string.IsNullOrEmpty(menuItemRequest.ImageUrl))
+                                    {
+                                        <div class="mt-2">
+                                            <img src="@menuItemRequest.ImageUrl" alt="Ảnh món ăn" class="img-thumbnail" style="max-height: 150px; object-fit: contain;" />
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="form-check form-switch mt-2 ms-2">
+                                    <InputCheckbox class="form-check-input" @bind-Value="menuItemRequest.IsAvailable" />
+                                    <label class="form-check-label">Hiển thị trên menu</label>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end mt-4">
+                                <button type="submit" class="btn btn-success me-2">Lưu</button>
+                                <button type="button" class="btn btn-secondary" @onclick="CloseModal">Huỷ</button>
+                            </div>
+                        </EditForm>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Modal Xác nhận Xoá -->
+    @if (confirmDeleteId != null)
+    {
+        <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Xác nhận xoá</h5>
+                        <button type="button" class="btn-close" @onclick="() => confirmDeleteId = null"></button>
+                    </div>
+                    <div class="modal-body">
+                        Bạn có chắc chắn muốn xoá món ăn này không?
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-danger" @onclick="DeleteConfirmed">Xoá</button>
+                        <button class="btn btn-secondary" @onclick="() => confirmDeleteId = null">Huỷ</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+
+@code {
+    private List<MenuItemResponseDTO> items = new();
+    private List<CategoryResponseDTO> categories = new();
+    private string searchTerm = string.Empty;
+    private int? selectedCategoryId;
+    private bool isLoading = true;
+    private int currentPage = 1;
+    private const int PageSize = 5;
+    private bool showModal = false;
+    private bool isModalLoading = false;
+    private string modalTitle = "";
+    private MenuItemRequestDTO menuItemRequest = new();
+    private int? editingMenuItemId = null;
+    private int? confirmDeleteId;
+    private string toastMessage;
+    private string toastClass;
+    private int restaurantId;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await UserService.GetCurrentUserAsync();
+        if (user == null) return;
+        restaurantId = user.RestaurantID;
+        await LoadCategories();
+        await LoadItems();
+        StateHasChanged();
+    }
+
+    private async Task LoadCategories() =>
+        categories = await MenuItemService.GetCategoriesAsync();
+
+    private async Task LoadItems()
+    {
+        isLoading = true;
+        items = await MenuItemService.GetByRestaurantAsync(restaurantId, searchTerm, selectedCategoryId, currentPage, PageSize);
+        isLoading = false;
+    }
+
+    private async Task Search()
+    {
+        currentPage = 1;
+        await LoadItems();
+    }
+
+    private async Task NextPage() { currentPage++; await LoadItems(); }
+    private async Task PreviousPage() { if (currentPage > 1) { currentPage--; await LoadItems(); } }
+
+    private void OpenCreateModal()
+    {
+        menuItemRequest = new();
+        editingMenuItemId = null;
+        modalTitle = "Thêm món ăn";
+        showModal = true;
+    }
+
+    private async Task OpenEditModal(int menuItemId)
+    {
+        showModal = true;
+        modalTitle = "Chỉnh sửa món ăn";
+        isModalLoading = true;
+
+        var existing = await MenuItemService.GetByIdAsync(menuItemId);
+        if (existing != null)
+        {
+            editingMenuItemId = menuItemId;
+            menuItemRequest = new MenuItemRequestDTO
+            {
+                Name = existing.Name,
+                Description = existing.Description,
+                CategoryID = existing.CategoryID,
+                Price = existing.Price,
+                DiscountPrice = existing.DiscountPrice,
+                ImageUrl = existing.ImageUrl,
+                IsAvailable = existing.IsAvailable
+            };
+        }
+        isModalLoading = false;
+    }
+
+    private void CloseModal() => showModal = false;
+
+    private async Task SubmitMenuItem()
+    {
+        bool result = (editingMenuItemId == null)
+            ? await MenuItemService.CreateAsync(restaurantId, menuItemRequest)
+            : await MenuItemService.UpdateAsync(editingMenuItemId.Value, menuItemRequest);
+
+        toastMessage = result ? "Lưu thành công!" : "Thao tác thất bại!";
+        toastClass = result ? "bg-success" : "bg-danger";
+        showModal = false;
+        await LoadItems();
+    }
+
+    private void ConfirmDelete(int id) => confirmDeleteId = id;
+
+    private async Task DeleteConfirmed()
+    {
+        if (confirmDeleteId != null)
+        {
+            bool result = await MenuItemService.DeleteAsync(confirmDeleteId.Value);
+            toastMessage = result ? "Xoá thành công!" : "Xoá thất bại!";
+            toastClass = result ? "bg-success" : "bg-danger";
+            confirmDeleteId = null;
+            await LoadItems();
+        }
+    }
+
+    private async Task UploadLogo(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        var result = await UploadService.UploadImageAsync(file);
+        if (!string.IsNullOrEmpty(result)) menuItemRequest.ImageUrl = result;
+    }
+}

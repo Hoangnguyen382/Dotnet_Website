@@ -1,0 +1,83 @@
+﻿@using Microsoft.AspNetCore.SignalR.Client
+@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@inject HubConnection HubConnection
+
+<div class="flex min-h-screen bg-gray-100">
+    <!-- Sidebar -->
+    <NavMenu />
+
+    <!-- Main content -->
+    <div class="ml-72 flex-1 p-6 relative">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-gray-700">@Title</h1>
+
+            <!-- Notification bell -->
+            <div class="relative">
+                <button class="relative focus:outline-none" @onclick="ToggleNotifications">
+                    <span class="material-icons text-3xl text-gray-700">notifications</span>
+                    @if (unreadCount > 0)
+                    {
+                        <span class="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full px-1">
+                            @unreadCount
+                        </span>
+                    }
+                </button>
+
+                @if (showDropdown && notifications.Any())
+                {
+                    <div class="absolute right-0 mt-2 w-80 bg-white border rounded-lg shadow-lg z-50">
+                        @foreach (var note in notifications)
+                        {
+                            <div class="p-3 hover:bg-gray-100 cursor-pointer"
+                                 @onclick="GoToOrders">
+                                🔔 @note
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Body -->
+        <div class="bg-white p-6 rounded-lg shadow">
+            @Body
+        </div>
+    </div>
+</div>
+
+@code {
+    private string Title = "Dashboard";
+    private List<string> notifications = new();
+    private int unreadCount = 0;
+    private bool showDropdown = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        HubConnection.On<string>("ReceiveOrderNotification", (message) =>
+        {
+            notifications.Insert(0, message); // thêm vào đầu
+            unreadCount++;
+            StateHasChanged();
+        });
+
+        if (HubConnection.State == HubConnectionState.Disconnected)
+        {
+            await HubConnection.StartAsync();
+        }
+    }
+
+    private void ToggleNotifications()
+    {
+        showDropdown = !showDropdown;
+        if (showDropdown) unreadCount = 0; // reset số badge khi mở
+    }
+
+    private void GoToOrders()
+    {
+        showDropdown = false;
+        unreadCount = 0;
+        Navigation.NavigateTo("/orders");
+    }
+}

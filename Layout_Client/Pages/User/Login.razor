@@ -1,0 +1,147 @@
+@page "/login"
+@layout Layout_Client.Shared.LoginLayout
+@using Layout_Client.Model.DTO
+@using Layout_Client.Service
+<link rel="stylesheet" href="css/login.css" />
+
+@inject UserService UserService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject HttpClient Http
+
+<div class="login-container">
+    <!-- Image side -->
+    <div class="image-side">
+        <img src="https://placehold.co/800x550?text=Restaurant+Management&font=roboto" alt="Ảnh nền nhà hàng">
+        <div class="image-overlay">
+            <div class="logo"><i class="fas fa-utensils"></i></div>
+            <h2>Chào mừng bạn đến với hệ thống</h2>
+        </div>
+    </div>
+
+    <!-- Form side -->
+    <div class="form-side">
+        <div class="header">
+            <h1>Chào mừng trở lại!</h1>
+            <p>Vui lòng đăng nhập để thực hiện mua hàng</p>
+        </div>
+
+        <!-- Đăng nhập bằng email/password -->
+        <EditForm Model="loginModel" OnValidSubmit="HandleLogin">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <div class="form-group">
+                <label for="email">Email</label>    
+                <div class="input-wrapper">
+                    <i class="fas fa-envelope input-icon"></i>
+                    <InputText id="email" @bind-Value="loginModel.Email" class="form-control" placeholder="Nhập email" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Mật khẩu</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-lock input-icon"></i>
+                    <InputText id="password" type="password" @bind-Value="loginModel.Password" class="form-control" placeholder="Nhập mật khẩu" />
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger text-center">@errorMessage</div>
+            }
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success text-center">@successMessage</div>
+            }
+
+            <div class="remember-me">
+                <InputCheckbox @bind-Value="rememberMe" />
+                <label>Ghi nhớ đăng nhập</label>
+            </div>
+            <br>
+            <button type="submit" class="btn">Đăng nhập</button>
+        </EditForm>
+
+        <!-- Divider -->
+        <div class="text-center my-3">
+            <span>— hoặc —</span>
+        </div>
+
+        <!-- Đăng nhập với Google -->
+        <div id="googleBtn" class="d-flex justify-content-center"></div>
+
+        <div class="footer mt-4">
+            <p>Quên mật khẩu? <a href="/forgot-password">Nhấp vào đây</a></p>
+            <p>Chưa có tài khoản? <a href="/register">Đăng ký ngay</a></p>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginDTO loginModel = new();
+    private string? errorMessage;
+    private string? successMessage;
+    private bool rememberMe = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // lấy ClientId từ Google Cloud Console
+            var clientId = "936746707664-6tm8ie9pd9ged5mrtf475cnid18clel1.apps.googleusercontent.com";
+            await JS.InvokeVoidAsync("googleLogin", clientId, DotNetObjectReference.Create(this));
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        errorMessage = null;
+        successMessage = null;
+
+        var result = await UserService.LoginAsync(loginModel);
+        if (result)
+        {
+            successMessage = "🎉 Đăng nhập thành công!";
+            await Task.Delay(1000);
+            Navigation.NavigateTo("/home");
+        }
+        else
+        {
+            errorMessage = "❌ Sai email hoặc mật khẩu.";
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnGoogleLoginSuccess(string idToken)
+    {
+        try
+        {
+            var response = await Http.PostAsJsonAsync("/login-google", new { IdToken = idToken });
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<TokenResponse>();
+                var token = result?.Token;
+
+                // lưu vào localStorage
+                await JS.InvokeVoidAsync("localStorage.setItem", "authToken", token);
+
+                successMessage = "🎉 Đăng nhập Google thành công!";
+                await Task.Delay(1000);
+                Navigation.NavigateTo("/home");
+            }
+            else
+            {
+                errorMessage = "❌ Google login thất bại.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Lỗi: " + ex.Message;
+        }
+    }
+
+    public class TokenResponse
+    {
+        public string Token { get; set; }
+    }
+}

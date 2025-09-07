@@ -1,0 +1,133 @@
+@page "/register"
+@layout Layout_Client.Shared.LoginLayout
+@using Layout_Client.Model.DTO
+@using Layout_Client.Service
+@inject UserService UserService
+@inject NavigationManager Navigation
+
+<link rel="stylesheet" href="css/login.css" />
+
+<div class="login-container">
+    <!-- Image side -->
+    <div class="image-side">
+        <img src="https://placehold.co/800x550?text=Restaurant+Management&font=roboto" alt="Ảnh nền nhà hàng">
+        <div class="image-overlay">
+            <div class="logo"><i class="fas fa-utensils"></i></div>
+            <h2>Tham gia cùng chúng tôi ngay hôm nay</h2>
+        </div>
+    </div>
+
+    <!-- Form side -->
+    <div class="form-side">
+        <div class="header">
+            <h1>Tạo tài khoản mới</h1>
+            <p>Vui lòng nhập thông tin để đăng ký</p>
+        </div>
+
+        @if (string.IsNullOrEmpty(successMessage))
+        {
+            <EditForm Model="registerModel" OnValidSubmit="HandleRegister">
+                <DataAnnotationsValidator />
+
+                <div class="form-group">
+                    <label for="name">Họ và tên</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-user input-icon"></i>
+                        <InputText id="name" @bind-Value="registerModel.Name" class="form-control" placeholder="Nhập họ và tên" />
+                    </div>
+                    <ValidationMessage For="@(() => registerModel.Name)" class="text-danger small" />
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-envelope input-icon"></i>
+                        <InputText id="email" @bind-Value="registerModel.Email" class="form-control" placeholder="Nhập email" />
+                    </div>
+                    <ValidationMessage For="@(() => registerModel.Email)" class="text-danger small" />
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Mật khẩu</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock input-icon"></i>
+                        <InputText id="password" type="password" @bind-Value="registerModel.Password" class="form-control" placeholder="Nhập mật khẩu" />
+                    </div>
+                    <ValidationMessage For="@(() => registerModel.Password)" class="text-danger small" />
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Xác nhận mật khẩu</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-lock input-icon"></i>
+                        <InputText id="confirmPassword" type="password" @bind-Value="confirmPassword" class="form-control" placeholder="Nhập lại mật khẩu" />
+                    </div>
+                    @if (!string.IsNullOrEmpty(passwordMismatchError))
+                    {
+                        <div class="text-danger small">@passwordMismatchError</div>
+                    }
+                </div>
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="alert alert-danger text-center">@errorMessage</div>
+                }
+
+                <button type="submit" class="btn">Đăng ký</button>
+            </EditForm>
+
+            <div class="footer">
+                <p>Đã có tài khoản? <a href="/login">Đăng nhập ngay</a></p>
+            </div>
+        }
+        else
+        {
+            <!-- Hiển thị sau khi đăng ký thành công -->
+            <div class="alert alert-success text-center">@successMessage</div>
+            <div class="d-grid gap-2 mt-3">
+                <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/login")'>
+                    Đi tới đăng nhập
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private UserDTO registerModel = new();
+    private string confirmPassword = "";
+    private string? passwordMismatchError;
+    private string? errorMessage;
+    private string? successMessage;
+
+    private async Task HandleRegister()
+    {
+        errorMessage = null;
+        successMessage = null;
+        passwordMismatchError = null;
+
+        if (registerModel.Password != confirmPassword)
+        {
+            passwordMismatchError = "❗ Mật khẩu xác nhận không khớp.";
+            return;
+        }
+
+        try
+        {
+            registerModel.Role = "User";
+            var result = await UserService.RegisterAsync(registerModel);
+            if (result)
+            {
+                successMessage = "🎉 Đăng ký thành công! Vui lòng kiểm tra email để xác thực trước khi đăng nhập.";
+            }
+            else
+            {
+                errorMessage = "❌ Đăng ký thất bại. Vui lòng thử lại.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"❌ Lỗi: {ex.Message}";
+        }
+    }
+}

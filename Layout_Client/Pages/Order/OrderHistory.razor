@@ -1,0 +1,165 @@
+@page "/orders"
+@using Layout_Client.Model.DTO
+@using Layout_Client.Service
+@inject OrderService OrderService
+@inject IJSRuntime JS
+@inject MenuItemService MenuItemService
+
+<h3 class="text-center mb-4">🧾 Danh sách đơn hàng của bạn</h3>
+
+@if (orders == null)
+{
+    <div class="text-center text-secondary">Đang tải đơn hàng...</div>
+}
+else if (!orders.Any())
+{
+    <div class="text-center text-muted">Bạn chưa có đơn hàng nào.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover table-bordered shadow-sm rounded">
+            <thead class="table-primary text-center">
+                <tr>
+                    <th>STT</th>      
+                    <th>SDT</th>
+                    <th>Địa chỉ</th>
+                    <th>Ngày đặt</th>
+                    <th>Tổng tiền</th>
+                    <th>Ghi chú</th>
+                    <th>PT Thanh toán</th>
+                    <th>Trạng Thái Đơn</th>
+                    <th>Trạng Thái Thanh Toán</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var order in orders)
+                {
+                    <tr class="align-middle text-center">
+                        <td>@order.OrderID</td>
+                        <td>@order.PhoneNumber</td>
+                        <td>@order.DeliveryAddress</td>
+                        <td>@order.OrderDate.ToString("dd/MM/yyyy")</td>
+                        <td class="text-danger fw-bold">@order.TotalAmount.ToString("N0") đ</td>
+                        <td>@order.Note</td>
+                        <td>@order.PaymentMethod</td>
+                        <td><span class="badge bg-info text-dark">@order.Status</span></td>
+                        <td>
+                            @if (order.PaymentStatus == "Thành Công")
+                            {
+                                <span class="badge bg-success">@order.PaymentStatus</span>
+                            }
+                            else if (order.PaymentStatus == "Thất Bại")
+                            {
+                                <span class="badge bg-danger">@order.PaymentStatus</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">@order.PaymentStatus</span>
+                            }
+                        </td>
+
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => ShowOrderDetails(order.OrderID)">
+                                Xem chi tiết
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<!-- Modal hiển thị chi tiết đơn hàng -->
+@if (selectedOrderDetails != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">🛒 Chi tiết đơn hàng #@selectedOrderId</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light text-center">
+                            <tr>
+                                <th>Tên món</th>
+                                <th>Hình Ảnh</th>
+                                <th>Số lượng</th>
+                                <th>Đơn giá</th>
+                                <th>Thành tiền</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in selectedOrderDetails)
+                            {
+                                <tr>
+                                    <td>@item.MenuItemName</td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <img src="@item.ImageUrl" alt="@item.MenuItemName" style="width: 40px; height: 40px; object-fit: cover;" class="rounded" />
+                                        </div>
+                                    </td>
+                                    <td class="text-center">@item.Quantity</td>
+                                    <td class="text-end">@item.UnitPrice.ToString("N0") đ</td>
+                                    <td class="text-end text-danger fw-semibold">
+                                        @((item.UnitPrice * item.Quantity).ToString("N0")) đ
+                                    </td>
+                                </tr>
+                            }
+                                <tr class="fw-bold">
+                                    <td colspan="4" class="text-end">Tổng cộng:</td>
+                                    <td class="text-end text-danger">
+                                        @selectedOrderDetails.Sum(i => i.UnitPrice * i.Quantity).ToString("N0") đ
+                                    </td>
+                                </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseModal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<OrderResponseDTO>? orders;
+    private List<OrderDetailResponseDTO>? selectedOrderDetails;
+    private int selectedOrderId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        orders = await OrderService.GetOrderByUserIdAsync();
+    }
+
+    private async Task ShowOrderDetails(int orderId)
+    {
+        selectedOrderId = orderId;
+
+        var details = await OrderService.GetOrderDetailByOrderIdAsync(orderId);
+        selectedOrderDetails = new();
+
+        foreach (var item in details)
+        {
+            var menuItem = await MenuItemService.GetByIdAsync(item.MenuItemID);
+            selectedOrderDetails.Add(new OrderDetailResponseDTO
+            {
+                MenuItemID = item.MenuItemID,
+                MenuItemName = menuItem?.Name ?? $"Món #{item.MenuItemID}",
+                ImageUrl = menuItem?.ImageUrl,
+                Quantity = item.Quantity,
+                UnitPrice = item.UnitPrice
+            });
+        }
+    }
+
+    private void CloseModal()
+    {
+        selectedOrderDetails = null;
+    }
+}

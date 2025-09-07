@@ -1,0 +1,97 @@
+@page "/restaurants"
+@using Layout_Client.Model.DTO
+@using Layout_Client.Service
+@inject RestaurantService RestaurantService
+
+<div class="container py-5">
+    <!-- Ô tìm kiếm -->
+    <div class="row justify-content-center mb-4">
+        <div class="col-md-8">
+            <div class="input-group shadow-sm">
+                <input type="text" class="form-control" placeholder="🔍 Tìm nhà hàng..."
+                       @bind="searchTerm" />
+                <button class="btn btn-primary" @onclick="SearchRestaurants">
+                    <i class="fas fa-search me-1"></i> Tìm kiếm
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Danh sách nhà hàng -->
+    @if (isLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+            <p class="mt-3">Đang tải nhà hàng...</p>
+        </div>
+    }
+    else if (restaurants == null || restaurants.Count == 0)
+    {
+        <div class="alert alert-warning text-center">Không tìm thấy nhà hàng nào.</div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var restaurant in restaurants)
+            {
+                <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+                    <div class="card border-0 shadow h-100">
+                        <img src="@restaurant.LogoUrl" class="card-img-top rounded-top" style="height: 180px; object-fit: cover;" />
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="fw-bold text-primary">@restaurant.Name</h5>
+                            <p class="text-muted small flex-grow-1">@restaurant.Description</p>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <span class="badge bg-@(restaurant.IsActive ? "success" : "danger")">
+                                    @(restaurant.IsActive ? "Đang Mở" : "Đóng Cửa")
+                                </span>
+                                <a class="btn btn-sm btn-outline-primary" href="/restaurant/@restaurant.RestaurantID">
+                                    Thực đơn
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<RestaurantResponseDTO>? restaurants;
+    private bool isLoading = true;
+    private string searchTerm = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRestaurants();
+    }
+
+    private async Task LoadRestaurants()
+    {
+        isLoading = true;
+        restaurants = await RestaurantService.GetAllRestaurantAsync(searchTerm, 1, 100);
+        isLoading = false;
+    }
+
+    private async Task SearchRestaurants()
+    {
+        await LoadRestaurants();
+    }
+}
+<style>
+    .card {
+    border-radius: 12px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.card-img-top {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+</style>

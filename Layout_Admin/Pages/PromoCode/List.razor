@@ -1,0 +1,315 @@
+@page "/promocodes"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Authorization
+@using Layout_Admin.Models.DTOs
+@using Layout_Admin.Service
+@inject PromoCodeService PromoCodeService
+@inject UserService UserService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<!-- Toast -->
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1055">
+    @if (!string.IsNullOrEmpty(toastMessage))
+    {
+        <div class="toast show text-white @toastClass border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">@toastMessage</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="() => toastMessage = null"></button>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="text-primary"><i class="fas fa-ticket-alt me-2"></i>Quản lý mã khuyến mãi</h3>
+        <button class="btn btn-success" @onclick="OpenCreateModal">
+            <i class="fas fa-plus me-2"></i>Thêm mã
+        </button>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-2">Đang tải dữ liệu...</p>
+        </div>
+    }
+    else if (promoCodes == null || promoCodes.Count == 0)
+    {
+        <div class="alert alert-info">Không có mã khuyến mãi nào.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle shadow-sm">
+                <thead class="table-light text-center">
+                    <tr>
+                        <th>Mã</th>
+                        <th>Loại</th>
+                        <th>Mô tả</th>
+                        <th>Giảm (%)</th>
+                        <th>Giảm (VND)</th>
+                        <th>Min đơn (VND)</th>
+                        <th>Min SL</th>
+                        <th>Bắt đầu</th>
+                        <th>Hết hạn</th>
+                        <th>Kích hoạt</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var promo in promoCodes)
+                    {
+                        <tr class="text-center">
+                            <td>@promo.Code</td>
+                            <td>@GetPromoCodeTypeName(promo.Type)</td>
+                            <td>@promo.Description</td>
+                            <td>@(promo.DiscountPercent?.ToString("0.#") ?? "-")</td>
+                            <td>@(promo.DiscountAmount?.ToString("N0") ?? "-")</td>
+                            <td>@(promo.MinOrderAmount?.ToString("N0") ?? "-")</td>
+                            <td>@(promo.MinQuantity ?? 0)</td>
+                            <td>@promo.StartDate?.ToString("dd/MM/yyyy")</td>
+                            <td>@promo.ExpiryDate?.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                <span class="badge @(promo.IsActive ? "bg-success" : "bg-secondary")">
+                                    @(promo.IsActive ? "✔" : "✖")
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => OpenEditModal(promo.PromoCodeID)">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(promo.PromoCodeID)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <!-- Modal tạo/sửa -->
+    @if (showModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">@modalTitle</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="promoRequest" OnValidSubmit="SubmitPromoCode">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Mã khuyến mãi <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="promoRequest.Code" />
+                                <ValidationMessage For="@(() => promoRequest.Code)" class="text-danger small" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Loại khuyến mãi <span class="text-danger">*</span></label>
+                                <InputSelect class="form-select" @bind-Value="promoRequest.Type">
+                                    <option value="">-- Chọn loại --</option>
+                                    @foreach (PromoCodeType type in Enum.GetValues(typeof(PromoCodeType)))
+                                    {
+                                        <option value="@type">@GetPromoCodeTypeName(type)</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => promoRequest.Type)" class="text-danger small" />
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label">Mô tả</label>
+                                <InputTextArea class="form-control" rows="3" @bind-Value="promoRequest.Description" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Ngày bắt đầu</label>
+                                <InputDate class="form-control" @bind-Value="promoRequest.StartDate" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Ngày hết hạn</label>
+                                <InputDate class="form-control" @bind-Value="promoRequest.ExpiryDate" />
+                            </div>
+
+                            @if (promoRequest.Type == PromoCodeType.AmountDiscount)
+                            {
+                                <div class="col-md-6">
+                                    <label class="form-label">Số tiền giảm (VND)</label>
+                                    <InputNumber class="form-control" @bind-Value="promoRequest.DiscountAmount" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Đơn hàng tối thiểu (VND)</label>
+                                    <InputNumber class="form-control" @bind-Value="promoRequest.MinOrderAmount" />
+                                </div>
+                            }
+
+                            @if (promoRequest.Type == PromoCodeType.QuantityDiscount)
+                            {
+                                <div class="col-md-6">
+                                    <label class="form-label">Phần trăm giảm (%)</label>
+                                    <InputNumber class="form-control" @bind-Value="promoRequest.DiscountPercent" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Số lượng món tối thiểu</label>
+                                    <InputNumber class="form-control" @bind-Value="promoRequest.MinQuantity" />
+                                </div>
+                            }
+                            <div class="col-md-6">
+                                <label class="form-label">DiscountAmount</label>
+                                <InputNumber class="form-control" @bind-Value="promoRequest.DiscountAmount" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">RestaurantID</label>
+                                <InputNumber class="form-control" @bind-Value="promoRequest.RestaurantID" hidden />
+                            </div>
+
+                            <div class="col-12 mt-1 ms-1">
+                                <div class="form-check form-switch">
+                                    <InputCheckbox class="form-check-input" @bind-Value="promoRequest.IsActive" />
+                                    <label class="form-check-label">Áp dụng khuyến mãi</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="submit" class="btn btn-success me-2">Lưu</button>
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Huỷ</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+    <!-- Modal xoá -->
+    @if (confirmDeleteId != null)
+    {
+        <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Xác nhận xoá</h5>
+                        <button type="button" class="btn-close" @onclick="() => confirmDeleteId = null"></button>
+                    </div>
+                    <div class="modal-body">Bạn có chắc chắn muốn xoá mã khuyến mãi này không?</div>
+                    <div class="modal-footer">
+                        <button class="btn btn-danger" @onclick="DeleteConfirmed">Xoá</button>
+                        <button class="btn btn-secondary" @onclick="() => confirmDeleteId = null">Huỷ</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public int restaurantId { get; set; }
+    private List<PromoCodeResponseDTO> promoCodes = new();
+    private PromoCodeRequestDTO promoRequest = new();
+    private int? editingPromoId;
+    private bool showModal = false;
+    private string modalTitle;
+    private int? confirmDeleteId;
+    private string toastMessage;
+    private string toastClass;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await UserService.GetCurrentUserAsync();
+        if (user == null) return;
+        restaurantId = user.RestaurantID;
+        await LoadPromoCodes();
+    }
+
+    private async Task LoadPromoCodes()
+    {
+        isLoading = true;
+        promoCodes = await PromoCodeService.GetAllAsync(restaurantId);
+        isLoading = false;
+    }
+
+    private void OpenCreateModal()
+    {
+        promoRequest = new() { RestaurantID = restaurantId, IsActive = true };
+        editingPromoId = null;
+        modalTitle = "Thêm mã khuyến mãi";
+        showModal = true;
+    }
+
+    private async Task OpenEditModal(int id)
+    {
+        var promo = await PromoCodeService.GetByIdAsync(id);
+        if (promo != null)
+        {
+            editingPromoId = id;
+            promoRequest = new PromoCodeRequestDTO
+            {
+                Code = promo.Code,
+                Description = promo.Description,
+                Type = promo.Type,
+                StartDate = promo.StartDate,
+                ExpiryDate = promo.ExpiryDate,
+                DiscountAmount = promo.DiscountAmount,
+                DiscountPercent = promo.DiscountPercent,
+                MinOrderAmount = promo.MinOrderAmount,
+                MinQuantity = promo.MinQuantity,
+                GiftMenuItemID = promo.GiftMenuItemID,
+                IsActive = promo.IsActive,
+                RestaurantID = promo.RestaurantID
+            };
+            modalTitle = "Chỉnh sửa mã khuyến mãi";
+            showModal = true;
+        }
+    }
+
+    private async Task SubmitPromoCode()
+    {
+        bool result = editingPromoId == null
+            ? await PromoCodeService.CreateAsync(restaurantId, promoRequest)
+            : await PromoCodeService.UpdateAsync(editingPromoId.Value, promoRequest);
+
+        toastMessage = result ? "Lưu thành công!" : "Thao tác thất bại!";
+        toastClass = result ? "bg-success" : "bg-danger";
+        showModal = false;
+        await LoadPromoCodes();
+    }
+
+    private async Task DeleteConfirmed()
+    {
+        if (confirmDeleteId != null)
+        {
+            var result = await PromoCodeService.DeleteAsync(confirmDeleteId.Value);
+            toastMessage = result ? "Xoá thành công!" : "Xoá thất bại!";
+            toastClass = result ? "bg-success" : "bg-danger";
+            confirmDeleteId = null;
+            await LoadPromoCodes();
+        }
+    }
+
+    private void CloseModal() => showModal = false;
+
+    private void ConfirmDelete(int id) => confirmDeleteId = id;
+
+    private string GetPromoCodeTypeName(PromoCodeType type) => type switch
+    {
+        PromoCodeType.AmountDiscount => "Giảm theo số tiền",
+        PromoCodeType.QuantityDiscount => "Giảm theo số lượng",
+        _ => "Không xác định"
+    };
+}

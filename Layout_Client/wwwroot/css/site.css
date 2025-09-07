@@ -1,0 +1,48 @@
+        .footer-links a {
+    color: #212529; /* hoặc màu đậm như #000 */
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.footer-links a:hover {
+    color: #007bff; /* hoặc màu nổi bật hơn khi hover */
+}
+        
+        .social-icon {
+            color: white;
+            font-size: 1.5rem;
+            margin-right: 15px;
+            transition: color 0.3s;
+        }
+        
+        .social-icon:hover {
+            color: var(--primary-color);
+        }
+        @media (min-width: 992px) {
+    .col-lg-2-5 {
+        flex: 0 0 auto;
+        width: 20%;
+    }
+}
+.back-btn {
+    margin-top: 15px;
+    margin-left: 15px;
+    z-index: 10;
+}
+
+.menu-item-card, .restaurant-card {
+    flex: 0 0 auto; /* Prevent flex items from shrinking */
+    width: 200px; /* Set a fixed width for each card */
+    margin-right: 15px; /* Space between cards */
+}
+
+.menu-item-card:last-child, .restaurant-card:last-child {
+    margin-right: 0; /* Remove margin for the last card */
+}
+
+/* Optional: Hide scrollbar for a cleaner look */
+.menu-items-scroll::-webkit-scrollbar, .restaurants-scroll::-webkit-scrollbar {
+    display: none; /* Hide scrollbar for WebKit browsers */
+}
+
+

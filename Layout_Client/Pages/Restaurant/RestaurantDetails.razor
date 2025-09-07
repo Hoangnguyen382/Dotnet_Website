@@ -1,0 +1,575 @@
+@page "/restaurant/{id:int}"
+@using Layout_Client.Model.DTO
+@using Layout_Client.Models.DTO
+@using Layout_Client.Models.DTOs
+@using Layout_Client.Service
+@inject RestaurantService RestaurantService
+@inject MenuItemService MenuItemService
+@inject CartService CartService
+@inject PromoCodeService PromoCodeService
+@inject ReviewService ReviewService
+@inject UserService UserService
+@inject IJSRuntime JS
+
+@inject NavigationManager Navigation
+
+@if (restaurant == null)
+{
+    <div class="text-center my-5">
+        <div class="spinner-border text-primary"></div>
+        <p class="mt-2">Đang tải thông tin nhà hàng...</p>
+    </div>
+}
+else
+{
+    <div class="container py-4">
+        <!-- Header nhà hàng -->
+        <div class="bg-light rounded shadow p-4 position-relative mb-5">
+            <!-- Nút quay lại -->
+                    <button class="btn btn-outline-secondary position-absolute back-btn"
+                        style="top: -3rem; left: 0rem;"
+                        @onclick='() => Navigation.NavigateTo("/home")'>
+                    ← Quay lại
+                    </button>
+
+            <div class="d-flex flex-wrap align-items-center gap-4">
+                <img src="@restaurant.LogoUrl" class="img-fluid rounded shadow" style="max-width: 320px;" />
+                <div>
+                    <h2 class="fw-bold text-danger">@restaurant.Name</h2>
+                    <p class="text-muted mb-1">@restaurant.Description</p>
+                    <p><strong class="text-dark">Địa chỉ:</strong> @restaurant.Address</p>
+                    <p><strong class="text-dark">Điện thoại:</strong> @restaurant.PhoneNumber</p>
+                    <p><strong class="text-dark">Giờ mở cửa:</strong> @restaurant.OpeningHours</p>
+                    <p>
+                    <strong class="text-dark">Đánh giá trung bình:</strong>
+                    <span class="text-warning">
+                        @averageRating.ToString("0.0") ★
+                    </span>
+                    </p>
+                </div>
+            </div>
+        </div>
+        @if (promoCodes != null && promoCodes.Count > 0)
+{
+    <div class="mb-4">
+        <h4 class="text-primary fw-bold mb-3">
+            🎁 Mã Giảm Giá Đặc Biệt
+        </h4>
+
+        <div class="row g-3">
+            @foreach (var promo in promoCodes)
+            {
+                <div class="col-md-6 col-lg-4 col-xl-3">
+                    <div class="border rounded shadow-sm p-3 h-100 bg-light position-relative">
+                        <div class="position-absolute top-0 end-0 m-2">
+                            @if (promo.IsActive)
+                            {
+                                <span class="badge bg-success">Đang áp dụng</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Hết hạn</span>
+                            }
+                        </div>
+
+                        <h5 class="text-danger fw-bold">@promo.Code</h5>
+                        <p class="mb-1 text-muted">@promo.Description</p>
+
+                        <ul class="list-unstyled small mb-0">
+                            @if (promo.Type == PromoCodeType.AmountDiscount)
+                            {
+                                <li>💸 Giảm: <strong>@promo.DiscountAmount?.ToString("N0") đ</strong></li>
+                                <li>🧾 Đơn tối thiểu: @promo.MinOrderAmount?.ToString("N0") đ</li>
+                            }
+                            else if (promo.Type == PromoCodeType.QuantityDiscount)
+                            {
+                                <li>📦 Giảm: <strong>@promo.DiscountPercent?.ToString("0.#")%</strong></li>
+                                <li>🍽️ SL tối thiểu: @promo.MinQuantity món</li>
+                            }
+
+                            <li>🕒 @promo.StartDate?.ToString("dd/MM") - @promo.ExpiryDate?.ToString("dd/MM")</li>
+                        </ul>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-info mb-4">
+        Nhà hàng hiện không có mã giảm giá nào đang hoạt động.
+    </div>
+}
+    
+        <!-- nhà hàng -->
+        <h4 class="text-primary fw-bold mb-3">
+            🍽️ Món Ăn 
+        </h4>
+        <!-- Bộ lọc -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-5">
+                <input class="form-control shadow-sm" @bind="searchTerm" placeholder="🔍 Tìm tên món..." />
+            </div>
+            <div class="col-md-4">
+                <select class="form-select shadow-sm" @bind="selectedCategoryId">
+                    <option value="">📂 Tất cả danh mục</option>
+                    @foreach (var category in categories)
+                    {
+                        <option value="@category.CategoryID">@category.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3 d-grid">
+                <button class="btn btn-primary" @onclick="Search">
+                    <i class="fas fa-search me-2"></i>Tìm kiếm
+                </button>
+            </div>
+        </div>
+
+        <!-- Danh sách món ăn -->
+        @if (isLoading)
+        {
+            <div class="text-center my-5">
+                <div class="spinner-border text-primary"></div>
+                <p class="mt-2">Đang tải món ăn...</p>
+            </div>
+        }
+        else if (menuItems == null || menuItems.Count == 0)
+        {
+            <div class="alert alert-warning text-center">Không có món ăn nào phù hợp.</div>
+        }
+        else
+        {
+            <div class="row g-4">
+                @foreach (var item in menuItems.Where(m => m.IsAvailable == true))
+                {
+                    <div class="col-6 col-sm-4 col-md-3 col-lg-2-5">
+                        <div class="card border-0 shadow-sm h-100">
+                            <img src="@item.ImageUrl" class="card-img-top" style="height: 200px; object-fit: cover;" />
+                            <div class="card-body d-flex flex-column">
+                            <h5 class="card-title text-primary">@item.Name</h5>
+                            <p class="text-muted small flex-grow-1">@item.Description</p>
+
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="text-danger fw-bold">
+                                   @if (item.Price > item.SellingPrice)
+                                    {
+                                        <span class="text-muted text-decoration-line-through me-1">@item.Price.ToString("N0") đ</span>
+                                        <span>@item.SellingPrice.ToString("N0") đ</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@item.SellingPrice.ToString("N0") đ</span>
+                                    }
+
+                                </div>
+                                @if (item.IsAvailable)
+                                {
+                                    <span class="badge bg-success">Còn bán</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Ngừng bán</span>
+                                }
+                            </div>
+
+                            @* Đánh giá sao *@
+                            @if (averageRatings.TryGetValue(item.MenuItemID, out var avg) && avg > 0)
+                            {
+                                <div class="mt-1 small text-warning">
+                                    ⭐ @avg.ToString("0.0") / 5
+                                    <span class="text-muted">(Đã đánh giá)</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="mt-1 small text-muted">
+                                    ⭐ Chưa có đánh giá
+                                </div>
+                            }
+                            <button class="btn btn-outline-danger btn-sm w-100 mt-auto" @onclick="() => AddToCart(item)">
+                                🛒 Thêm vào giỏ
+                            </button>
+                        </div>
+
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <button class="page-link" @onclick="PreviousPage" disabled="@(currentPage == 1)">← Trước</button>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">Trang @currentPage</span>
+                    </li>
+                    <li class="page-item @(hasNextPage ? "" : "disabled")">
+                        <button class="page-link" @onclick="NextPage" disabled="@(!hasNextPage)">Sau →</button>
+                    </li>
+                </ul>
+            </nav>
+        }
+            <hr class="my-4" />
+        <!-- Đánh giá -->
+<div class="row g-4 mb-5">
+    <!-- Đánh giá nhà hàng -->
+    <div class="col-12 col-md-6">
+        <div class="bg-white border rounded shadow-sm p-3 h-100">
+            <h5 class="text-danger fw-bold mb-3">⭐ Đánh giá nhà hàng (@reviews?.Count)</h5>
+            <div style="max-height: 500px; overflow-y: auto;">
+                @if (reviews == null)
+                {
+                    <p class="text-muted">Đang tải đánh giá...</p>
+                }
+                else if (!reviews.Any())
+                {
+                    <p class="text-muted">Chưa có đánh giá nào.</p>
+                }
+                else
+                {
+                    @foreach (var r in reviews)
+                    {
+                        <div class="border rounded p-3 mb-2 bg-light review-card">
+                            <div class="d-flex justify-content-between">
+                                <strong>@r?.UserName</strong>
+                                <span class="text-muted small">@r.ReviewDate.ToString("dd/MM/yyyy")</span>
+                            </div>
+                            <div class="text-warning mb-1">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    <i class="bi @(i <= r.Rating ? "bi-star-fill" : "bi-star")"></i>
+                                }
+                            </div>
+                            <p class="mb-0">@r.Comment</p>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Đánh giá món ăn -->
+    <div class="col-12 col-md-6">
+        <div class="bg-white border rounded shadow-sm p-3 h-100">
+            <h5 class="text-danger fw-bold mb-3">🍽️ Đánh giá món ăn (@dishReviews?.Count)</h5>
+            <div style="max-height: 500px; overflow-y: auto;">
+                @if (dishReviews == null)
+                {
+                    <p class="text-muted">Đang tải đánh giá món ăn...</p>
+                }
+                else if (!dishReviews.Any())
+                {
+                    <p class="text-muted">Chưa có đánh giá món ăn nào.</p>
+                }
+                else
+                {
+                    @foreach (var r in dishReviews)
+                    {
+                        var item = menuItems.FirstOrDefault(m => m.MenuItemID == r.MenuItemID);
+                        <div class="border rounded p-3 mb-2 bg-light review-card">
+                            <div class="d-flex justify-content-between">
+                                <strong>@r?.UserName</strong>
+                                <span class="text-muted small">@r.ReviewDate.ToString("dd/MM/yyyy")</span>
+                            </div>
+                            <span class="badge bg-info text-dark mb-2">Món: @item?.Name</span>
+                            <div class="text-warning mb-1">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    <i class="bi @(i <= r.Rating ? "bi-star-fill" : "bi-star")"></i>
+                                }
+                            </div>
+                            <p class="mb-0">@r.Comment</p>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+    <hr class="my-4" />
+    <!-------------------- Viết Review ------------------->
+    <div class="mt-5">
+        <h4 class="text-primary fw-bold mb-3">📝 Viết đánh giá</h4>
+
+    @if (currentUser == null)
+    {
+        <div class="alert alert-warning">
+            Vui lòng <a class="fw-bold" href="/login">đăng nhập</a> để viết đánh giá.
+        </div>
+    }
+    else
+    {
+        <button class="btn btn-outline-primary" @onclick="() => showReviewOptions = true">
+            ✍️ Viết đánh giá
+        </button>
+    }
+
+    <!-- Modal chọn loại đánh giá -->
+    @if (showReviewOptions)
+    {
+        <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">Chọn loại đánh giá</h5>
+                        <button type="button" class="btn-close btn-close-white" @onclick="CloseModal"></button>
+                    </div>
+                    <div class="modal-body d-grid gap-3">
+                        <button class="btn btn-outline-danger" @onclick="ShowRestaurantReviewForm">
+                            🏠 Đánh giá nhà hàng
+                        </button>
+                        <button class="btn btn-outline-success" @onclick="ShowDishReviewForm">
+                            🍽️ Đánh giá món ăn
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Form đánh giá -->
+    @if (showRestaurantForm || showDishForm)
+    {
+        <div class="mt-4 border p-4 rounded shadow-sm bg-light">
+            <EditForm Model="newReview" OnValidSubmit="SubmitReview">
+                <DataAnnotationsValidator />
+                <h5 class="fw-bold mb-3">
+                    @(showRestaurantForm ? "🏠 Đánh giá nhà hàng" : "🍽️ Đánh giá món ăn")
+                </h5>
+
+                @if (showDishForm)
+                {
+                    <div class="mb-3">
+                        <label class="form-label">Chọn món ăn</label>
+                        <InputSelect class="form-select" @bind-Value="newReview.MenuItemID">
+                            <option value="">-- Chọn món --</option>
+                            @foreach (var item in menuItems)
+                            {
+                                <option value="@item.MenuItemID">@item.Name</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => newReview.MenuItemID)" />
+                    </div>
+                }
+
+                <div class="mb-3">
+                    <label class="form-label">Số sao (1–5)</label>
+                    <InputNumber class="form-control" @bind-Value="newReview.Rating" min="1" max="5" />
+                    <ValidationMessage For="@(() => newReview.Rating)" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Bình luận</label>
+                    <InputTextArea class="form-control" rows="3" @bind-Value="newReview.Comment" />
+                    <ValidationMessage For="@(() => newReview.Comment)" />
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-primary">Gửi đánh giá</button>
+                    <button type="button" class="btn btn-secondary" @onclick="ResetReviewForm">Huỷ</button>
+                </div>
+            </EditForm>
+        </div>
+    }
+</div>
+
+</div>
+}
+
+@code {
+    [Parameter] public int id { get; set; }
+    private Dictionary<int, double> averageRatings = new(); // MenuItemID -> AverageRating
+
+    private RestaurantResponseDTO? restaurant;
+    private List<MenuItemResponseDTO> menuItems = new();
+    private List<CategoryResponseDTO> categories = new();
+    private List<PromoCodeResponseDTO> promoCodes = new();
+    private List<UserResponseDTO> users = new();
+    private List<ReviewResponseDTO>? reviews;
+    private List<ReviewResponseDTO>? dishReviews;
+    private ReviewRequestDTO newReview = new();
+    private UserResponseDTO? currentUser;
+    private double averageRating = 0;
+    private bool showReviewOptions = false;
+    private bool showRestaurantForm = false;
+    private bool showDishForm = false;
+    private string searchTerm = "";
+    private int? selectedCategoryId;
+    private bool isLoading = true;
+    private int currentPage = 1;
+    private const int PageSize = 4;
+    private bool hasNextPage = false;
+    private string? toastMessage;
+    private string? toastClass;
+    protected override async Task OnInitializedAsync()
+    {
+        restaurant = await RestaurantService.GetRestaurantByIdAsync(id);
+        categories = await MenuItemService.GetCategoriesAsync();
+        promoCodes = await PromoCodeService.GetAllPromoCodeAsync(id);
+        await LoadMenuItems();
+        currentUser = await UserService.GetCurrentUserAsync();
+        await LoadReviews();
+        averageRating = await ReviewService.GetAverageRatingForRestaurantAsync(id);
+        newReview = new()
+        {
+            RestaurantID = id,
+            Rating = 5
+        };
+    }
+    private async Task LoadMenuItems()
+    {
+        isLoading = true;
+        menuItems = await MenuItemService.GetAllMenuItemAsync(id, searchTerm, selectedCategoryId, currentPage, PageSize);
+        hasNextPage = menuItems != null && menuItems.Count == PageSize;
+        isLoading = false;
+        await LoadAverageRatings();
+    }
+    private async Task AddToCart(MenuItemResponseDTO item)
+    {
+        var cartItem = new CartItemDTO
+        {
+            MenuItemID = item.MenuItemID,
+            Name = item.Name,
+            ImageUrl = item.ImageUrl,
+            SellingPrice = item.SellingPrice,
+            Quantity = 1,
+            RestaurantID = id
+        };
+        bool added = await CartService.AddToCartAsync(cartItem);
+        if (!added)
+        {
+            bool confirm = await JS.InvokeAsync<bool>("confirm", "Bạn đang có món ăn từ nhà hàng khác trong giỏ. Bạn có muốn xóa giỏ hàng để thêm món mới?");
+            if (confirm)
+            {
+                await CartService.ClearCartAsync();
+                await CartService.AddToCartAsync(cartItem);
+                await JS.InvokeVoidAsync("alert", "✅ Đã thêm vào giỏ hàng!");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", "❌ Không thể thêm món từ nhà hàng khác.");
+            }
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", "✅ Đã thêm vào giỏ hàng!");
+        }
+    }
+    private async Task LoadAverageRatings()
+    {
+        averageRatings.Clear();
+        foreach (var item in menuItems)
+        {
+            var avg = await ReviewService.GetAverageRatingForMenuItemAsync(item.MenuItemID);
+            averageRatings[item.MenuItemID] = avg;
+        }
+    }
+    private async Task LoadDishReviews()
+    {
+        dishReviews = new List<ReviewResponseDTO>();
+        foreach (var item in menuItems)
+        {
+            var reviewsOfDish = await ReviewService.GetReviewsByMenuItemIdAsync(item.MenuItemID);
+            if (reviewsOfDish != null)
+                dishReviews.AddRange(reviewsOfDish);
+        }
+    }
+
+    private async Task LoadReviews()
+    {
+        var allReviews = await ReviewService.GetReviewsByRestaurantIdAsync(id);
+        reviews = allReviews.Where(r => r.MenuItemID == null || r.MenuItemID == 0).ToList();
+        dishReviews = allReviews.Where(r => r.MenuItemID > 0).ToList();
+    }
+    private void CloseModal()
+    {
+        showReviewOptions = false;
+        showRestaurantForm = false;
+        showDishForm = false;
+    }
+    private void ShowRestaurantReviewForm()
+    {
+        showRestaurantForm = true;
+        showReviewOptions = false;
+        newReview = new()
+        {
+            RestaurantID = id,
+            Rating = 5,
+        };
+    }
+    private void ShowDishReviewForm()
+    {
+        showDishForm = true;
+        showReviewOptions = false;
+        newReview = new()
+        {
+            RestaurantID = id,
+            Rating = 5,
+
+        };
+    }
+
+    private void ResetReviewForm()
+    {
+        showRestaurantForm = false;
+        showDishForm = false;
+    }
+    private async Task SubmitReview()
+{
+    newReview.UserID = currentUser.UserID;
+    newReview.RestaurantID = id;
+
+    bool result = false;
+
+    if (showRestaurantForm)
+    {
+        newReview.MenuItemID = 0;
+        result = await ReviewService.CreateRestaurantReviewAsync(newReview);
+    }
+    else if (showDishForm)
+    {
+        if (newReview.MenuItemID == null)
+        {
+            toastMessage = "❌ Vui lòng chọn món ăn để đánh giá!";
+            toastClass = "bg-danger text-white";
+            StateHasChanged();
+            return;
+        }
+        result = await ReviewService.CreateMenuItemReviewAsync(newReview);
+    }
+
+    if (result)
+    {
+        toastMessage = "🎉 Đánh giá thành công!";
+        toastClass = "bg-success text-white";
+        newReview.Comment = "";
+        newReview.Rating = 5;
+
+        await LoadReviews(); // reload review nhà hàng
+        await LoadMenuItems(); // reload lại rating trung bình món ăn
+        await LoadDishReviews();
+    }
+    else
+    {
+        toastMessage = "❌ Đánh giá thất bại. Vui lòng thử lại.";
+        toastClass = "bg-danger text-white";
+    }
+
+    StateHasChanged();
+    await Task.Delay(3000);
+    toastMessage = null;
+    toastClass = null;
+}
+
+    private async Task Search()
+    {
+        currentPage = 1;
+        await LoadMenuItems();
+    }
+    private async Task NextPage() { currentPage++; await LoadMenuItems(); }
+    private async Task PreviousPage() { if (currentPage > 1) { currentPage--; await LoadMenuItems(); } }
+}

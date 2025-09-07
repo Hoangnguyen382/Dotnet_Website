@@ -1,0 +1,169 @@
+@page "/staff-management"
+@using Layout_Admin.Model.DTO
+@using Layout_Admin.Service
+@inject UserService UserService
+@inject IJSRuntime JS
+
+<div class="container py-4">
+
+    <!-- Toast -->
+    @if (!string.IsNullOrEmpty(toastMessage))
+    {
+        <div class="toast show position-fixed top-0 end-0 m-4 text-white @toastClass" style="z-index: 9999;">
+            <div class="toast-body d-flex justify-content-between align-items-center">
+                <span>@toastMessage</span>
+                <button class="btn-close btn-close-white" @onclick="() => toastMessage = null"></button>
+            </div>
+        </div>
+    }
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="text-primary"><i class="fas fa-users me-2"></i>Quản lý tài khoản Staff</h3>
+    </div>
+
+    <!-- Table -->
+    <!-- Table -->
+@if (isLoading)
+{
+    <div class="text-center text-muted mt-4">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Đang tải...</span>
+        </div>
+        <div class="mt-2">Đang tải danh sách nhân viên...</div>
+    </div>
+}
+else if (staffList == null || staffList.Count == 0)
+{
+    <div class="alert alert-warning text-center mt-4">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        Nhà hàng này hiện chưa có nhân viên nào.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover shadow-sm">
+            <thead class="table-light">
+                <tr>
+                    <th>Email</th>
+                    <th>Tên</th>
+                    <th>SDT</th>
+                    <th>Role</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var staff in staffList)
+                {
+                    <tr>
+                        <td>@staff.Email</td>
+                        <td>@staff.Name</td>
+                        <td>@staff.PhoneNumber</td>
+                        <td>
+                            <span class="badge bg-secondary text-capitalize">@staff.Role</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => OpenEditModal(staff)">
+                                <i class="fas fa-edit me-1"></i> Sửa
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+
+    <!-- Modal -->
+    @if (showModal)
+    {
+        <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">Chỉnh sửa thông tin</h5>
+                        <button class="btn-close btn-close-white" @onclick="CloseModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <EditForm Model="editStaff" OnValidSubmit="HandleUpdateAsync">
+                            <DataAnnotationsValidator />
+                            <div class="mb-3">
+                                <label class="form-label">Role</label>
+                                <InputSelect class="form-select" @bind-Value="editStaff.Role">
+                                    <option value="staff">Staff</option>
+                                    <option value="manager">Manager</option>
+                                    <option value="admin">Admin</option>
+                                </InputSelect>
+                            </div>
+                            <div class="d-flex justify-content-end">
+                                <button class="btn btn-success me-2" type="submit">Lưu</button>
+                                <button class="btn btn-secondary" type="button" @onclick="CloseModal">Hủy</button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private int restaurantId { get; set; }
+
+    private List<UserResponseDTO> staffList;
+    private UserDTO editStaff = new();
+    private bool showModal = false;
+    private bool isLoading = true;
+    private string toastMessage;
+    private string toastClass;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var currentUser = await UserService.GetCurrentUserAsync();
+        if (currentUser == null || currentUser.RestaurantID == null)
+        {
+            await JS.InvokeVoidAsync("alert", "Không xác định được nhà hàng.");
+            return;
+        }
+        restaurantId = currentUser.RestaurantID;
+        staffList = await UserService.GetAllUsersAsync(restaurantId);
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private void OpenEditModal(UserResponseDTO staff)
+    {
+        editStaff = new UserDTO
+        {
+            Role = staff.Role,
+        };
+        selectedUserId = staff.UserID;
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+    }
+
+    private int selectedUserId;
+
+    private async Task HandleUpdateAsync()
+    {
+        bool result = await UserService.UpdateRoleUserAsync(selectedUserId, editStaff.Role, editStaff);
+
+        toastMessage = result ? "Cập nhật thành công!" : "Cập nhật thất bại!";
+        toastClass = result ? "bg-success" : "bg-danger";
+
+        if (result)
+        {
+            isLoading = true;
+            staffList = await UserService.GetAllUsersAsync(restaurantId);
+            isLoading = false;
+            showModal = false;
+            StateHasChanged();
+        }
+    }
+}

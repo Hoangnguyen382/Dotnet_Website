@@ -1,0 +1,274 @@
+@page "/combodetails/{comboId:int}"
+@attribute [Authorize]
+@using Layout_Admin.Models.DTO
+@using Microsoft.AspNetCore.Authorization
+@using Layout_Admin.Model.DTO
+@using Layout_Admin.Service
+@inject ComboService ComboService
+@inject ComboDetailService ComboDetailService
+@inject MenuItemService MenuItemService
+@inject UserService UserService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<div class="container py-4">
+    @if (isLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-2">Đang tải dữ liệu...</p>
+        </div>
+    }
+    else if (combo != null)
+    {
+        <h3 class="text-primary mb-4">
+            <i class="fas fa-gift me-2"></i>Chi Tiết Combo Khuyến Mãi
+        </h3>
+
+        <div class="row">
+            <!-- Cột trái: thông tin combo -->
+            <div class="col-md-4">
+                <h5 class="mb-3">Thông Tin Combo :</h5>
+                <div class="table-responsive shadow-sm">
+                    <table class="table table-bordered">
+                        <tbody>
+                            <tr>
+                                <td class="fw-bold text-primary">Tên Combo</td>
+                                <td>@combo.Name</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold text-primary">Hình Ảnh</td>
+                                <td>
+                                    <img src="@combo.ImageUrl" alt="@combo.Name" class="img-thumbnail"
+                                        style="max-width:70px;" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold text-primary">Giá Combo</td>
+                                <td>@combo.Price.ToString("N0")</td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold text-primary">Trạng Thái</td>
+                                <td class="fw-bold @(combo.IsActive ? "text-success" : "text-danger")">
+                                    @(combo.IsActive ? "Kích hoạt" : "Khóa")
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold text-primary">Mô Tả</td>
+                                <td>@combo.Description</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-flex gap-2 mt-2">
+                    <button class="btn btn-success" @onclick="@(() => Nav.NavigateTo("/combos"))">
+                        <i class="fas fa-arrow-left me-1"></i> Quay Lại
+                    </button>
+                </div>
+            </div>
+
+            <!-- Cột phải: danh sách sản phẩm -->
+            <div class="col-md-8">
+                <h5 class="mb-3">Sản Phẩm Combo Khuyến Mãi :</h5>
+                
+                @if (details.Count == 0)
+                {
+                    <div class="alert alert-info">Chưa có sản phẩm nào trong combo.</div>
+                }
+                else
+                {
+                    <div class="table-responsive shadow-sm">
+                        <table class="table table-bordered align-middle text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>STT</th>
+                                    <th>Hình Ảnh</th>
+                                    <th>Tên Sản Phẩm</th>
+                                    <th>Số Lượng</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var (d, index) in details.Select((val, i) => (val, i + 1)))
+                                {
+                                    <tr>
+                                        <td>@index</td>
+                                        <td>
+                                            <img src="@d.MenuItemImage" alt="@d.MenuItemName" class="img-thumbnail"
+                                                style="max-width:60px;" />
+                                        </td>
+                                        <td>@d.MenuItemName</td>
+                                        <td>@d.Quantity</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-warning me-1"
+                                                @onclick="() => OpenEditModal(d.ComboDetailID)">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-danger" @onclick="() => ConfirmDelete(d.ComboDetailID)">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                
+                <br />
+                <div class="d-flex justify-content-start mb-2">
+                    <button class="btn btn-info" @onclick="OpenCreateModal">
+                        <i class="fas fa-plus me-1"></i> Thêm Sản Phẩm
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Modal Form Thêm/Sửa -->
+@if (showModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">@modalTitle</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="detailRequest" OnValidSubmit="SubmitDetail">
+                        <DataAnnotationsValidator />
+                        <div class="mb-3">
+                            <label class="form-label">Sản phẩm</label>
+                            <InputSelect class="form-select" @bind-Value="detailRequest.MenuItemID">
+                                <option value="">-- Chọn sản phẩm --</option>
+                                @foreach (var p in menuItems)
+                                {
+                                    <option value="@p.MenuItemID">@p.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Số lượng</label>
+                            <InputNumber class="form-control" @bind-Value="detailRequest.Quantity" />
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-success me-2">Lưu</button>
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Huỷ</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal Xoá -->
+@if (confirmDeleteId != null)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Xác nhận xoá</h5>
+                    <button type="button" class="btn-close" @onclick="() => confirmDeleteId = null"></button>
+                </div>
+                <div class="modal-body">
+                    Bạn có chắc chắn muốn xoá sản phẩm này khỏi combo?
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-danger" @onclick="DeleteConfirmed">Xoá</button>
+                    <button class="btn btn-secondary" @onclick="() => confirmDeleteId = null">Huỷ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+    [Parameter] public int comboId { get; set; }
+
+    private ComboResponseDTO? combo;
+    private List<ComboDetailResponseDTO> details = new();
+    private List<MenuItemResponseDTO> menuItems = new();
+    private ComboDetailRequestDTO detailRequest = new();
+    private bool isLoading = true;
+    private bool showModal = false;
+    private string modalTitle = "";
+    private int? editingDetailId;
+    private int? confirmDeleteId;
+    private string toastMessage;
+    private string toastClass;
+    private int restaurantId;
+    protected override async Task OnInitializedAsync()
+    {
+        UserResponseDTO? user = await UserService.GetCurrentUserAsync();
+        if (user == null) return;
+        restaurantId = user.RestaurantID;
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        combo = await ComboService.GetComboByIdAsync(comboId);
+        details = await ComboDetailService.GetDetailsByComboIdAsync(comboId);
+        menuItems = await MenuItemService.GetByRestaurantAsync(restaurantId);
+        isLoading = false;
+    }
+
+    private void OpenCreateModal()
+    {
+        detailRequest = new ComboDetailRequestDTO { ComboID = comboId };
+        editingDetailId = null;
+        modalTitle = "Thêm sản phẩm vào combo";
+        showModal = true;
+    }
+
+    private async Task OpenEditModal(int detailId)
+    {
+        var existing = await ComboDetailService.GetDetailByIdAsync(detailId);
+        if (existing != null)
+        {
+            editingDetailId = detailId;
+            detailRequest = new ComboDetailRequestDTO
+            {
+                ComboID = comboId,
+                MenuItemID = existing.MenuItemID,
+                Quantity = existing.Quantity
+            };
+            modalTitle = "Chỉnh sửa chi tiết combo";
+            showModal = true;
+        }
+    }
+
+    private void CloseModal() => showModal = false;
+
+    private async Task SubmitDetail()
+    {
+        bool result = (editingDetailId == null)
+        ? await ComboDetailService.AddDetailAsync(detailRequest)
+        : await ComboDetailService.UpdateDetailAsync(editingDetailId.Value, detailRequest);
+
+        toastMessage = result ? "Lưu thành công!" : "Thao tác thất bại!";
+        toastClass = result ? "bg-success" : "bg-danger";
+        showModal = false;
+        await LoadData();
+    }
+
+    private void ConfirmDelete(int id) => confirmDeleteId = id;
+
+    private async Task DeleteConfirmed()
+    {
+        if (confirmDeleteId != null)
+        {
+            bool result = await ComboDetailService.DeleteDetailAsync(confirmDeleteId.Value);
+            toastMessage = result ? "Xoá thành công!" : "Xoá thất bại!";
+            toastClass = result ? "bg-success" : "bg-danger";
+            confirmDeleteId = null;
+            await LoadData();
+        }
+    }
+}

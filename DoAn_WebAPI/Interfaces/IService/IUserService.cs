@@ -17,5 +17,6 @@ namespace DoAn_WebAPI.Interfaces.IService
         Task<User?> ResetPasswordAsync(ResetPassDTO resetPassDTO);
         string GenerateJwtToken(User user);
         Task<string?> LoginWithGoogleAsync(GoogleLoginDTO dto);
+        Task<User?> CreateStaffAccountAsync(UserDTO dto, int createdByUserId);
     }
 }

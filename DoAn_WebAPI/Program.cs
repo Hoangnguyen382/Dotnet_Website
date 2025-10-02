@@ -42,8 +42,16 @@ builder.Services.AddScoped<IPromoCodeRepository, PromoCodeRepository>();
 builder.Services.AddScoped<IPromoCodeService, PromoCodeService>();
 builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
+builder.Services.AddScoped<IComboRepository, ComboRepository>();
+builder.Services.AddScoped<IComboService, ComboService>();
+builder.Services.AddScoped<IComboDetailRepository, ComboDetailRepository>();
+builder.Services.AddScoped<IComboDetailService, ComboDetailService>();
 builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IConversationRepository, ConversationRepository>();
+builder.Services.AddScoped<IMessageRepository, MessageRepository>();
+builder.Services.AddScoped<IMessageImageRepository, MessageImageRepository>();
+builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.Configure<MomoOptionModel>(builder.Configuration.GetSection("MomoAPI"));
 builder.Services.AddScoped<IMomoService, MomoService>();
 //AddControllers và Swagger
@@ -88,6 +96,21 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidAudience = "http://localhost:5176"
     };
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) &&
+                path.StartsWithSegments("/chatHub"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
+
 }); 
 
 // add Authorization
@@ -147,6 +170,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 // đăng ký SignalR
+app.MapHub<ChatHub>("/chatHub");
 app.MapHub<NotificationHub>("/notificationHub");
 var summaries = new[]
 {

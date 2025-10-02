@@ -7,79 +7,227 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 
-<div class="container py-4">
-    <h2 class="mb-4 fw-bold text-primary"><i class="bi bi-cart4"></i> Giỏ hàng của bạn</h2>
+<style>
+    .cart-container {
+        max-width: 1350px;
+        margin: 2rem auto;
+        padding: 1rem 2rem;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgb(0 0 0 / 0.1);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .cart-header {
+        font-weight: 700;
+        font-size: 1.8rem;
+        color: #222222; /* Màu đen xám đẹp, không quá chói */
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .cart-header i {
+        font-size: 2.2rem;
+        color: #222222;
+    }
+    table.cart-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 12px;
+    }
+    table.cart-table thead th {
+        text-align: left;
+        padding-bottom: 0.75rem;
+        color: #495057;
+        font-weight: 600;
+        font-size: 0.95rem;
+        border-bottom: 2px solid #dee2e6;
+    }
+    table.cart-table tbody tr {
+        background: #f8f9fa;
+        border-radius: 10px;
+        transition: background-color 0.3s ease;
+    }
+    table.cart-table tbody tr:hover {
+        background: #e9ecef;
+    }
+    table.cart-table tbody td {
+        vertical-align: middle;
+        padding: 0.75rem 0.5rem;
+        font-size: 0.95rem;
+        color: #212529;
+    }
+    table.cart-table tbody td img {
+        border-radius: 8px;
+        width: 70px;
+        height: 70px;
+        object-fit: cover;
+        box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+    }
+    .quantity-control {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        justify-content: center;
+    }
+    .quantity-control button {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 1.5px solid #ced4da;
+        background: #fff;
+        color: #495057;
+        font-weight: 700;
+        font-size: 1.2rem;
+        cursor: pointer;
+        transition: background-color 0.2s ease, color 0.2s ease;
+    }
+    .quantity-control button:hover {
+        background-color: #0d6efd;
+        color: #fff;
+        border-color: #0d6efd;
+    }
+    .quantity-control span {
+        min-width: 24px;
+        text-align: center;
+        font-weight: 600;
+        font-size: 1rem;
+    }
+    .price, .total-price {
+        font-weight: 700;
+        color: #dc3545;
+        font-size: 1rem;
+    }
+    .remove-btn {
+        background: transparent;
+        border: none;
+        color: #dc3545;
+        font-size: 1.3rem;
+        cursor: pointer;
+        transition: color 0.2s ease;
+    }
+    .remove-btn:hover {
+        color: #a71d2a;
+    }
+    .summary {
+        margin-top: 2rem;
+        padding: 1.5rem 2rem;
+        background: #f1f3f5;
+        border-radius: 12px;
+        box-shadow: inset 0 0 10px rgb(0 0 0 / 0.05);
+        max-width: 400px;
+        margin-left: auto;
+    }
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 1rem;
+        margin-bottom: 0.75rem;
+        color: #495057;
+    }
+    .summary-row.discount {
+        color: #198754;
+    }
+    .summary-row.total {
+        font-weight: 700;
+        font-size: 1.3rem;
+        color: #dc3545;
+        border-top: 2px solid #dee2e6;
+        padding-top: 0.75rem;
+        margin-top: 1rem;
+    }
+    .btn-place-order {
+        display: block;
+        width: 100%;
+        margin-top: 1.5rem;
+        padding: 0.75rem 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        background-color: #222222;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgb(25 135 84 / 0.4);
+        transition: background-color 0.3s ease;
+    }
+    .btn-place-order:hover {
+        background-color: #444444;
+    }
+    .empty-cart {
+        text-align: center;
+        font-size: 1.2rem;
+        color: #6c757d;
+        margin-top: 3rem;
+        user-select: none;
+    }
+</style>
+
+<div class="cart-container">
+    <h2 class="cart-header">
+        <i class="bi bi-cart4"></i> Giỏ hàng của bạn
+    </h2>
 
     @if (cartItems.Count == 0)
     {
-        <div class="alert alert-info shadow-sm rounded">🛒 Chưa có món nào trong giỏ hàng.</div>
+        <div class="empty-cart">
+            🛒 Chưa có món nào trong giỏ hàng.
+        </div>
     }
     else
     {
-        <div class="table-responsive shadow-sm rounded">
-            <table class="table table-hover align-middle text-center border">
-                <thead class="table-primary">
+        <table class="cart-table">
+            <thead>
+                <tr>
+                    <th style="text-align: center;">Hình ảnh</th>
+                    <th style="text-align: center;">Tên món</th>
+                    <th style="text-align: center;">Giá</th>
+                    <th style="text-align: center;">Số lượng</th>
+                    <th style="text-align: center;">Tổng</th>
+                    <th style="text-align: center;">Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in cartItems)
+                {
                     <tr>
-                        <th>Hình ảnh</th>
-                        <th class="text-start">Tên món</th>
-                        <th>Giá</th>
-                        <th>Số lượng</th>
-                        <th>Tổng</th>
-                        <th>Thao tác</th>
+                        <td>
+                            <img src="@item.ImageUrl" alt="@item.Name" />
+                        </td>
+                        <td>@item.Name</td>
+                        <td class="price">@item.SellingPrice.ToString("N0") đ</td>
+                        <td>
+                            <div class="quantity-control" role="group" aria-label="Điều chỉnh số lượng">
+                                <button @onclick="() => ChangeQuantity(item.MenuItemID, -1)" aria-label="Giảm số lượng">−</button>
+                                <span>@item.Quantity</span>
+                                <button @onclick="() => ChangeQuantity(item.MenuItemID, 1)" aria-label="Tăng số lượng">+</button>
+                            </div>
+                        </td>
+                        <td class="total-price">@((item.SellingPrice * item.Quantity).ToString("N0")) đ</td>
+                        <td>
+                            <button class="remove-btn" @onclick="() => ConfirmRemove(item.MenuItemID, item.ComboID)" title="Xoá món">
+                                <i class="bi bi-trash-fill"></i>
+                            </button>
+                        </td>
                     </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in cartItems)
-                    {
-                        <tr>
-                            <td>
-                                <img src="@item.ImageUrl" alt="@item.Name" class="rounded" style="width: 60px; height: 60px; object-fit: cover;" />
-                            </td>
-                            <td class="text-start fw-medium">@item.Name</td>
-                            <td>@item.SellingPrice.ToString("N0") đ</td>
-                            <td>
-                                <div class="d-flex justify-content-center align-items-center gap-2">
-                                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => ChangeQuantity(item.MenuItemID, -1)">−</button>
-                                    <span class="fw-semibold">@item.Quantity</span>
-                                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => ChangeQuantity(item.MenuItemID, 1)">+</button>
-                                </div>
-                            </td>
-                            <td class="fw-bold text-danger">@((item.SellingPrice * item.Quantity).ToString("N0")) đ</td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmRemove(item.MenuItemID)">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+                }
+            </tbody>
+        </table>
 
-        <!-- Mã giảm giá và tổng tiền -->
-        <div class="row mt-4">>
-
-            <div class="col-md-6 text-end">
-                <div class="border p-3 rounded shadow-sm">
-                    <div class="d-flex justify-content-between">
-                        <span class="fw-semibold">Tạm tính:</span>
-                        <span>@cartItems.Sum(i => i.SellingPrice * i.Quantity).ToString("N0") đ</span>
-                    </div>
-                    <div class="d-flex justify-content-between text-success">
-                        <span class="fw-semibold">Giảm giá:</span>
-                        <span>@discountAmount.ToString("N0") đ</span>
-                    </div>
-                    <hr />
-                    <div class="d-flex justify-content-between fw-bold fs-5 text-danger">
-                        <span>Tổng cộng:</span>
-                        <span>@finalTotal.ToString("N0") đ</span>
-                    </div>
-                </div>
+        <div class="summary" aria-label="Tóm tắt đơn hàng">
+            <div class="summary-row">
+                <span>Tạm tính:</span>
+                <span>@cartItems.Sum(i => i.SellingPrice * i.Quantity).ToString("N0") đ</span>
             </div>
-        </div>
-
-        <div class="text-end mt-4">
-            <button class="btn btn-success btn-lg px-4 shadow" @onclick="PlaceOrder">
+            <div class="summary-row discount">
+                <span>Giảm giá:</span>
+                <span>@discountAmount.ToString("N0") đ</span>
+            </div>
+            <div class="summary-row total">
+                <span>Tổng cộng:</span>
+                <span>@finalTotal.ToString("N0") đ</span>
+            </div>
+            <button class="btn-place-order" @onclick="PlaceOrder" aria-label="Tiến hành đặt hàng">
                 🧾 Tiến hành đặt hàng
             </button>
         </div>
@@ -87,11 +235,11 @@
 </div>
 
 <!-- Toast notification -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999">
-    <div class="toast align-items-center text-white bg-success border-0" id="toastNotification" role="alert">
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1055">
+    <div class="toast align-items-center text-white bg-success border-0" id="toastNotification" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="d-flex">
             <div class="toast-body" id="toastBody">Thành công!</div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
     </div>
 </div>
@@ -108,18 +256,18 @@
         cartItems = await CartService.GetCartAsync();
     }
 
-    private async Task ConfirmRemove(int menuItemId)
+    private async Task ConfirmRemove(int? menuItemId, int? comboId)
     {
         bool confirmed = await JS.InvokeAsync<bool>("confirm", "Bạn có chắc muốn xoá món này?");
         if (confirmed)
         {
-            await Remove(menuItemId);
+            await Remove(menuItemId, comboId);
         }
     }
 
-    private async Task Remove(int menuItemId)
+    private async Task Remove(int? menuItemId,int? comboId)
     {
-        await CartService.RemoveFromCartAsync(menuItemId);
+        await CartService.RemoveFromCartAsync(menuItemId,comboId);
         cartItems = await CartService.GetCartAsync();
         StateHasChanged();
     }

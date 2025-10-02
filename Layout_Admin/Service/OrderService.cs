@@ -11,10 +11,14 @@ namespace Layout_Admin.Service
         {
             _factory = factory;
         }
-        public async Task<List<OrderResponseDTO?>> GetOrderByRestaurantIdAsync(int restaurantId)
+        public async Task<List<OrderResponseDTO?>> GetOrderByRestaurantIdAsync(int restaurantId, DateTime? date = null)
         {
             var client = await _factory.CreateClientAsync();
             var url = $"api/orders/restaurant/{restaurantId}";
+            if (date.HasValue)
+            {
+                url += $"?date={date.Value.ToString("yyyy-MM-dd")}";
+            }
             return await client.GetFromJsonAsync<List<OrderResponseDTO>>(url);
         }
         public async Task<bool> UpdateOrderAsync(int id, OrderRequestDTO dto)

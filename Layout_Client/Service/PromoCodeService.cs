@@ -25,21 +25,22 @@ namespace Layout_Client.Service
             var client = await _factory.CreateClientAsync();
             return await client.GetFromJsonAsync<List<PromoCodeResponseDTO>>($"api/PromoCode/public?restaurantId={restaurantId}") ?? new();
         }
-        public async Task<PromoValidateResponse?> ValidatePromoAsync(string code, int restaurantId, decimal totalAmount, int totalQuantity)
+        public async Task<(decimal discount, int? promoCodeId)> ValidatePromoAsync(string code, int restaurantId, decimal totalAmount, int totalQuantity)
         {
             var client = await _factory.CreateClientAsync();
-            var response = await client.GetAsync(
-                $"api/PromoCode/validate-promo?code={code}&restaurantId={restaurantId}&totalAmount={totalAmount}&totalQuantity={totalQuantity}"
-            );
-            if (!response.IsSuccessStatusCode)
-                return null;
-
-            return await response.Content.ReadFromJsonAsync<PromoValidateResponse>();
+            var _httpClient = client;
+            var response = await _httpClient.GetFromJsonAsync<PromoResult>($"api/Promocode/validate-promo?code={code}&restaurantId={restaurantId}&totalAmount={totalAmount}&totalQuantity={totalQuantity}");
+            return (response.discount, response.promoCodeId);
         }
         public async Task<PromoCodeResponseDTO?> GetByIdAsync(int id)
         {
             var client = await _factory.CreateClientAsync();
             return await client.GetFromJsonAsync<PromoCodeResponseDTO>($"api/PromoCode/{id}");
+        }
+        private class PromoResult
+        {
+            public decimal discount { get; set; }
+            public int? promoCodeId { get; set; }
         }
     }
 }

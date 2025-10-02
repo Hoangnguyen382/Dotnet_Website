@@ -13,13 +13,17 @@ namespace DoAn_WebAPI.Repositories
         {
             _context = context;
         }
-        public async Task<IEnumerable<Order>> GetOrdersByRestaurantIdAsync(int restaurantId)
+        public async Task<IEnumerable<Order>> GetOrdersByRestaurantIdAsync(int restaurantId, DateTime? date = null)
         {
-            return await _context.Orders.Where(o => o.RestaurantID == restaurantId)
-                                        .OrderByDescending(o => o.OrderDate)
-                                        .Include(o => o.OrderDetails)
-                                        .ToListAsync();
+            var targetDate = date?.Date ?? DateTime.Today;
+
+            return await _context.Orders
+                .Where(o => o.RestaurantID == restaurantId && o.OrderDate.Date == targetDate)
+                .OrderByDescending(o => o.OrderDate)
+                .Include(o => o.OrderDetails)
+                .ToListAsync();
         }
+
         public async Task<IEnumerable<Order>> GetOrdersByUserIdAsync(int userId)
         {
             return await _context.Orders.Where(o => o.UserID == userId)

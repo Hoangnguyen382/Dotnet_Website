@@ -19,10 +19,8 @@ namespace DoAn_WebAPI.Controllers
         {
             _restaurantService = restaurantService;
         }
-    
-        // GET: api/Restaurant
-        [HttpGet]
 
+        [HttpGet]
         public async Task<ActionResult<IEnumerable<RestaurantResponseDTO>>> GetAllRestaurants(
             [FromQuery] string? search,
             [FromQuery] int page = 1,
@@ -32,114 +30,71 @@ namespace DoAn_WebAPI.Controllers
             return Ok(result);
         }
 
-        // GET: api/Restaurant/5
         [HttpGet("{id}")]
         public async Task<ActionResult<RestaurantResponseDTO>> GetRestaurantById(int id)
         {
-            try
-            {
-                var restaurant = await _restaurantService.GetRestaurantByIdAsync(id);
-                return Ok(restaurant);
-            }
-            catch (KeyNotFoundException)
-            {
+            var restaurant = await _restaurantService.GetRestaurantByIdAsync(id);
+            if (restaurant == null)
                 return NotFound("Restaurant not found.");
-            }
+            return Ok(restaurant);
         }
 
         [HttpGet("user")]
-        [Authorize ]
-        public async Task<ActionResult<RestaurantResponseDTO>> GetRestaurantByUser()
+        [Authorize]
+        public async Task<ActionResult<IEnumerable<RestaurantResponseDTO>>> GetRestaurantByUser()
         {
-            try
-            {
-                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                  ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-
-            if (userIdClaim == null)
-            {
-                return Unauthorized("User ID not found in token.");
-            }
-            int userId = int.Parse(userIdClaim);
-                var restaurant = await _restaurantService.GetAllRestaurantByUserAsync(userId);
-                return Ok(restaurant);
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound("Restaurant not found.");
-            }
+            int userId = GetUserIdFromToken();
+            var restaurants = await _restaurantService.GetAllRestaurantByUserAsync(userId);
+            return Ok(restaurants);
         }
 
-        // POST: api/Restaurant
         [HttpPost]
         [Authorize]
         public async Task<ActionResult<RestaurantResponseDTO>> CreateRestaurant([FromBody] RestaurantRequestDTO restaurantRequest)
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                  ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
 
-            if (userIdClaim == null)
-            {
-                return Unauthorized("User ID not found in token.");
-            }
-            int userId = int.Parse(userIdClaim);
-
+            int userId = GetUserIdFromToken();
             var created = await _restaurantService.CreateRestaurantAsync(restaurantRequest, userId);
             return CreatedAtAction(nameof(GetRestaurantById), new { id = created.RestaurantID }, created);
         }
 
-        // PUT: api/Restaurant/5
         [HttpPut("{id}")]
-        [Authorize (Roles = "Admin")]
+        [Authorize]
         public async Task<ActionResult<RestaurantResponseDTO>> UpdateRestaurant(int id, [FromBody] RestaurantRequestDTO restaurantRequest)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                      ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-            if (userIdClaim == null)
-                return Unauthorized("User ID not found in token.");
-            int userId = int.Parse(userIdClaim);
+            int userId = GetUserIdFromToken();
+            var updated = await _restaurantService.UpdateRestaurantAsync(id, userId, restaurantRequest);
 
-            try
-            {
-                var updated = await _restaurantService.UpdateRestaurantAsync(id, userId, restaurantRequest);
-                if (updated == null)
-                {
-                    return NotFound("Restaurant not found or not owned by user");
-                }
-                return Ok(updated);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Forbid(ex.Message);
-            }
-            catch
-            {
-                return BadRequest("Failed to update restaurant.");
-            }
+            if (updated == null)
+                return NotFound("Restaurant not found.");
+
+            return Ok(updated);
         }
 
-        // DELETE: api/Restaurant/5
         [HttpDelete("{id}")]
         [Authorize]
         public async Task<IActionResult> DeleteRestaurant(int id)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                      ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-
-            if (userIdClaim == null)
-                return Unauthorized("User ID not found in token.");
-
-            int userId = int.Parse(userIdClaim);
-
+            int userId = GetUserIdFromToken();
             var success = await _restaurantService.DeleteRestaurantAsync(id, userId);
+
             if (!success)
-                return NotFound("Restaurant not found or not owned by user.");
+                return NotFound("Restaurant not found.");
 
             return NoContent();
+        }
+
+        private int GetUserIdFromToken()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                              ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+
+            if (userIdClaim == null)
+                throw new UnauthorizedAccessException("User ID not found in token.");
+
+            return int.Parse(userIdClaim);
         }
     }
 }

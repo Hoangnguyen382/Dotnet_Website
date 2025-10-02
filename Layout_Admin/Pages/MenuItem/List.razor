@@ -269,7 +269,7 @@
     }
 
     private async Task LoadCategories() =>
-        categories = await MenuItemService.GetCategoriesAsync();
+        categories = await MenuItemService.GetCategoriesAsync(restaurantId);
 
     private async Task LoadItems()
     {

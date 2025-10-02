@@ -24,9 +24,9 @@ namespace DoAn_WebAPI.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllCategoryAsync()
+        public async Task<IActionResult> GetAllCategoryAsync(int restaurantID)
         {
-            var result = await _categoryService.GetAllCategoryAsync();
+            var result = await _categoryService.GetAllCategoryByRestaurantAsync(restaurantID);
             return Ok(result);
         }
 
@@ -38,26 +38,25 @@ namespace DoAn_WebAPI.Controllers
             {
                 return BadRequest(ModelState);
             }
-            // var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-            //       ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-            // if (userIdClaim == null)
-            // {
-            //     return Unauthorized("User ID not found in token.");
-            // }
-            // int userId = int.Parse(userIdClaim);
-            var category = await _restaurantRepository.GetRestaurantsByUserIdAsync(restaurantID);
-            if (category == null)
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                  ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            if (userIdClaim == null)
             {
-                return BadRequest("Restaurant not found.");
+                return Unauthorized("User ID not found in token.");
             }
-            // Gọi service để tạo menu item
-            var createdItem = await _categoryService.CreateCategoryAsync(restaurantID, categoryRequest);
+            int userId = int.Parse(userIdClaim);
+            var restaurant = await _restaurantRepository.GetRestaurantByIdAsync(restaurantID);
+            if (restaurant == null)
+            {
+                return NotFound("Restaurant not found.");
+            }
+            var createdItem = await _categoryService.CreateCategoryAsync(userId, restaurantID, categoryRequest);
 
             return Ok(createdItem);
         }
 
         [HttpGet("{id}")]
-            [Authorize]
+        [Authorize]
         public async Task<IActionResult> GetCategoryById(int id)
         {
             var category = await _categoryService.GetCategoryIdAsync(id);
@@ -69,14 +68,17 @@ namespace DoAn_WebAPI.Controllers
         }
 
         [HttpPut("{id}")]
-            [Authorize]
+        [Authorize]
         public async Task<IActionResult> UpdateCategory(int id, [FromBody] CategoryRequestDTO categoryRequest)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
-            var updatedCategory = await _categoryService.UpdateCategoryAsync(id, categoryRequest);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                  ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            int userId = int.Parse(userIdClaim);
+            var updatedCategory = await _categoryService.UpdateCategoryAsync(userId, id, categoryRequest);
             if (updatedCategory == null)
             {
                 return NotFound();
@@ -88,7 +90,10 @@ namespace DoAn_WebAPI.Controllers
             [Authorize]
         public async Task<IActionResult> DeleteCategory(int id)
         {
-            var result = await _categoryService.DeleteCategoryAsync(id);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                  ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            int userId = int.Parse(userIdClaim);
+            var result = await _categoryService.DeleteCategoryAsync(id, userId);
             if (!result)
             {
                 return NotFound();

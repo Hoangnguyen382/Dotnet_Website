@@ -13,9 +13,10 @@ namespace DoAn_WebAPI.Services
         private readonly IUserRepository _userRepository;
         private readonly IPromoCodeRepository _promoCodeRepo;
         private readonly IPromoCodeService _promoCodeService;
+        private readonly IComboRepository _comboRepository;
 
         public OrderService(IOrderRepository orderRepo, IOrderDetailRepository orderDetailRepo,
-        IMenuItemRepository menuItemRepository, IUserRepository userRepository, IPromoCodeRepository promoCodeRepo, IPromoCodeService promoCodeService)
+        IMenuItemRepository menuItemRepository, IUserRepository userRepository, IPromoCodeRepository promoCodeRepo, IPromoCodeService promoCodeService, IComboRepository comboRepository)
         {
             _orderRepo = orderRepo;
             _orderDetailRepo = orderDetailRepo;
@@ -23,10 +24,11 @@ namespace DoAn_WebAPI.Services
             _userRepository = userRepository;
             _promoCodeRepo = promoCodeRepo;
             _promoCodeService = promoCodeService;
+            _comboRepository = comboRepository;
         }
-        public async Task<IEnumerable<OrderResponseDTO>> GetOrdersByRestaurantIdAsync(int restaurantId)
+        public async Task<IEnumerable<OrderResponseDTO>> GetOrdersByRestaurantIdAsync(int restaurantId, DateTime? date = null)
         {
-            var orders = await _orderRepo.GetOrdersByRestaurantIdAsync(restaurantId);
+            var orders = await _orderRepo.GetOrdersByRestaurantIdAsync(restaurantId, date);
             return orders.Select(MapToResponseDTO);
         }
 
@@ -71,22 +73,46 @@ namespace DoAn_WebAPI.Services
             foreach (var detailDto in orderDetails)
             {
                 if (detailDto.Quantity < 1)
-                    throw new ArgumentException("Số lượng mỗi món ăn phải ít nhất là 1.");
+                    throw new ArgumentException("Số lượng mỗi sản phẩm/combo phải ít nhất là 1.");
 
-                var menuItem = await _menuItemRepository.GetMenuItemByIdAsync(detailDto.MenuItemID);
-                if (menuItem == null)
-                    throw new ArgumentException($"Món ăn với ID {detailDto.MenuItemID} không tồn tại.");
-
-                decimal unitPrice = menuItem.SellingPrice;
-                totalAmount += unitPrice * detailDto.Quantity;
-                totalQuantity += detailDto.Quantity;
-
-                order.OrderDetails.Add(new OrderDetail
+                if (detailDto.ComboID.HasValue) // 👉 Ưu tiên combo trước
                 {
-                    MenuItemID = detailDto.MenuItemID,
-                    Quantity = detailDto.Quantity,
-                    UnitPrice = unitPrice
-                });
+                    var combo = await _comboRepository.GetComboByIdAsync(detailDto.ComboID.Value);
+                    if (combo == null)
+                        throw new ArgumentException($"Combo với ID {detailDto.ComboID} không tồn tại.");
+
+                    decimal comboPrice = combo.Price;
+                    totalAmount += comboPrice * detailDto.Quantity;
+                    totalQuantity += detailDto.Quantity;
+
+                    order.OrderDetails.Add(new OrderDetail
+                    {
+                        ComboID = detailDto.ComboID,
+                        Quantity = detailDto.Quantity,
+                        UnitPrice = comboPrice,
+                    });
+                }
+                else if (detailDto.MenuItemID.HasValue)
+                {
+                    var menuItem = await _menuItemRepository.GetMenuItemByIdAsync(detailDto.MenuItemID.Value);
+                    if (menuItem == null)
+                        throw new ArgumentException($"Món ăn với ID {detailDto.MenuItemID} không tồn tại.");
+
+                    decimal unitPrice = menuItem.SellingPrice;
+                    totalAmount += unitPrice * detailDto.Quantity;
+                    totalQuantity += detailDto.Quantity;
+
+                    order.OrderDetails.Add(new OrderDetail
+                    {
+                        MenuItemID = detailDto.MenuItemID,
+                        Quantity = detailDto.Quantity,
+                        UnitPrice = unitPrice,
+                    });
+                }
+                else
+                {
+                    throw new ArgumentException("OrderDetail phải có MenuItemID hoặc ComboID.");
+                }
             }
 
             // ✅ Áp dụng mã giảm giá nếu có

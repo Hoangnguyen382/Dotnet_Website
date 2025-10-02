@@ -43,7 +43,7 @@ namespace DoAn_WebAPI.Controller
         }
 
         [HttpPut("update-role")]
-        [Authorize (Roles = "Admin,Manager")]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> UpdateUserRole(UserDTO dto)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
@@ -128,6 +128,29 @@ namespace DoAn_WebAPI.Controller
                     return BadRequest("Invalid token or password");
                 }
                 return Ok("Password reset successfully");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+        [HttpPost("create-staff")]
+        [Authorize(Roles = "Admin,Owner")]
+        public async Task<IActionResult> CreateStaff([FromBody] UserDTO dto)
+        {
+            try
+            {
+                var creatorId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+                var staff = await _userService.CreateStaffAccountAsync(dto, creatorId);
+                return Ok(staff);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(ex.Message);
             }
             catch (Exception ex)
             {

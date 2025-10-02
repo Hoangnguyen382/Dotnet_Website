@@ -5,7 +5,7 @@ namespace DoAn_WebAPI.Interfaces.IService
 {
     public interface IOrderService
     {
-        Task<IEnumerable<OrderResponseDTO>> GetOrdersByRestaurantIdAsync(int restaurantId);
+        Task<IEnumerable<OrderResponseDTO>> GetOrdersByRestaurantIdAsync(int restaurantId, DateTime? date = null);
         Task<IEnumerable<OrderResponseDTO>> GetOrdersByUserIdAsync(int userId);
         Task<OrderResponseDTO> GetOrderByIdAsync(int id);
         Task<OrderResponseDTO> CreateOrderAsync(int userId, int restaurantID, OrderRequestDTO dto, List<OrderDetailRequestDTO> orderDetails);

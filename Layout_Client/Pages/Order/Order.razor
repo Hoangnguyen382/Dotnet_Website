@@ -63,14 +63,6 @@ else
                                         Ví điện tử MoMo
                                     </label>
                                 </div>
-                                <div class="flex items-center">
-                                    <InputRadio Value="@("VNPay")" class="h-4 w-4 text-indigo-600" />
-                                    <label class="ml-3 text-sm text-gray-700 flex items-center">
-                                        <img src="https://placehold.co/60x20/blue/white?text=VNPay" alt="VNPay"
-                                            class="h-5 mr-2" />
-                                        VNPAY
-                                    </label>
-                                </div>
                             </div>
                         </InputRadioGroup>
                     </div>
@@ -208,18 +200,18 @@ else
     private async Task ApplyPromoCode()
     {
         promoMessage = string.Empty;
-        discountAmount = 0;
+        finalTotal = totalAmount;
 
-        var response = await PromoCodeService.ValidatePromoAsync(
+        (decimal discount, int? promoCodeId) = await PromoCodeService.ValidatePromoAsync(
         orderRequest.Code!,
         cartItems.First().RestaurantID,
         totalAmount,
         cartItems.Sum(i => i.Quantity)
         );
 
-        if (response != null)
+        if (discount > 0)
         {
-            discountAmount = response.Discount;
+            discountAmount = discount;
             finalTotal = totalAmount - discountAmount;
         }
         else
@@ -233,7 +225,8 @@ else
         errorMessage = null;
         var orderDetails = cartItems.Select(item => new OrderDetailRequestDTO
         {
-            MenuItemID = item.MenuItemID,
+            MenuItemID = item.MenuItemID > 0 ? item.MenuItemID : (int?)null,
+            ComboID = item.ComboID > 0 ? item.ComboID : (int?)null,
             Quantity = item.Quantity
         }).ToList();
         int restaurantID = cartItems.First().RestaurantID;

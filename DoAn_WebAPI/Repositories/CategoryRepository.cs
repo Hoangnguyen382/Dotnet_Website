@@ -15,9 +15,11 @@ namespace DoAn_WebAPI.Repositories
             _context = context;
         }
 
-        public async Task<IEnumerable<Category>> GetAllCategoryAsync()
+        public async Task<IEnumerable<Category>> GetAllCategoryByRestaurantAsync(int restaurantId)
         {
-            return await _context.Categories.ToListAsync();
+            return await _context.Categories
+            .Where(c => c.RestaurantID == restaurantId)
+            .ToListAsync();
         }
         public async Task<Category?> GetCategoryByIdAsync(int id)
         {
@@ -25,33 +27,21 @@ namespace DoAn_WebAPI.Repositories
         }
         public async Task<Category> CreateCategoryAsync(Category category)
         {
-            // tạo data cho created_at, updated_at
             _context.Categories.Add(category);
             await _context.SaveChangesAsync();
             return category;
         }
        
-        public async Task<Category> UpdateCategoryAsync(int id, Category category)
+        public async Task<Category> UpdateCategoryAsync(Category category)
         {
-            // kiểm tra xem sản phẩm có tồn tại không
-            var existingCategory = await _context.Categories.FindAsync(id);
-            // nếu không tồn tại thì trả về null
-            if (existingCategory == null)
-            {
-                return null;
-            }
-            // nếu có tồn tại thì cập nhật thông tin
-            existingCategory.Name = category.Name;
-            existingCategory.Description = category.Description;
-            // cập nhật vào database
-            _context.Categories.Update(existingCategory);
+            _context.Categories.Update(category);
             await _context.SaveChangesAsync();
-            return existingCategory;
+            return category;
         }
         public async Task<bool> DeleteCategoryAsync(int id)
         {
-            var existingCategory = await _context.Categories.FindAsync(id);    
-            if(existingCategory == null)
+            var existingCategory = await _context.Categories.FindAsync(id);
+            if (existingCategory == null)
             {
                 return false;
             }
@@ -59,6 +49,5 @@ namespace DoAn_WebAPI.Repositories
             await _context.SaveChangesAsync();
             return true;
         }
-
     }
 }

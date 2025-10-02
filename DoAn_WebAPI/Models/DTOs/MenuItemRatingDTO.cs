@@ -7,5 +7,7 @@ namespace DoAn_WebAPI.Models.DTOs
         public string ImageUrl { get; set; }
         public double AverageRating { get; set; }
         public int ReviewCount { get; set; }
+        public int RestaurantID { get; set; }
+        public string RestaurantName { get; set; }
     }
 }

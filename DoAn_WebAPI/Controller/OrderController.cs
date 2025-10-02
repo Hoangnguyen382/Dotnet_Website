@@ -30,9 +30,9 @@ namespace DoAn_WebAPI.Controllers
         }
 
         [HttpGet("restaurant/{restaurantId}")]
-        public async Task<ActionResult<IEnumerable<OrderResponseDTO>>> GetOrderByRestaurant(int restaurantId)
+        public async Task<ActionResult<IEnumerable<OrderResponseDTO>>> GetOrderByRestaurant(int restaurantId,[FromQuery] DateTime? date)
         {
-            var list = await _orderService.GetOrdersByRestaurantIdAsync(restaurantId);
+            var list = await _orderService.GetOrdersByRestaurantIdAsync(restaurantId, date);
             return Ok(list);
         }
 

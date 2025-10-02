@@ -13,20 +13,21 @@ namespace DoAn_WebAPI.Services
     {
         private readonly IPromoCodeRepository _promoCodeRepo;
         private readonly IRestaurantRepository _resRepo;
+        private readonly IUserRepository _userRepository;
 
-        public PromoCodeService(IPromoCodeRepository promoCodeRepo, IRestaurantRepository resRepo)
+        public PromoCodeService(IPromoCodeRepository promoCodeRepo, IRestaurantRepository resRepo, IUserRepository userRepository)
         {
             _promoCodeRepo = promoCodeRepo;
             _resRepo = resRepo;
+            _userRepository = userRepository;
         }
 
         public async Task<IEnumerable<PromoCodeResponseDTO>> GetAllPromoCodesAsync(int restaurantId, int userId)
         {
-             var restaurant = await _resRepo.GetRestaurantByIdAsync(restaurantId);
-                if (restaurant == null)
-                    throw new KeyNotFoundException("Restaurant not found.");
-                if (restaurant.UserID != userId)
-                    throw new UnauthorizedAccessException("You are not authorized to view menu items of this restaurant.");
+            var user = await _userRepository.GetUserByIdAsync(userId);
+            if (user == null || user.RestaurantID != restaurantId)
+                throw new UnauthorizedAccessException("Bạn không có quyền xem mã giảm giá của nhà hàng này.");
+
             var promoCodes = await _promoCodeRepo.GetAllPromoCodesAsync(restaurantId);
             return promoCodes.Select(p => MapToResponseDTO(p));
         }
@@ -62,6 +63,7 @@ namespace DoAn_WebAPI.Services
             {
                 throw new UnauthorizedAccessException("You are not authorized to add items to this restaurant.");
             }
+
             var resList = await _resRepo.GetRestaurantsByUserIdAsync(userId);
             var res = resList.FirstOrDefault();
             var existing = await _promoCodeRepo.GetPromoCodeByCodeAsync(dto.Code);
@@ -92,11 +94,10 @@ namespace DoAn_WebAPI.Services
             var promoCode = await _promoCodeRepo.GetPromoCodeByIdAsync(id);
             if (promoCode == null)
                 return null;    
-            var restaurant = await _resRepo.GetRestaurantByIdAsync(promoCode.RestaurantID);
-            if (restaurant == null || restaurant.UserID != userId)
-            {
-                throw new UnauthorizedAccessException("You cannot edit this item");
-            }
+            var user = await _userRepository.GetUserByIdAsync(userId);
+            if (user == null || user.RestaurantID != promoCode.RestaurantID)
+                throw new UnauthorizedAccessException("Bạn không có quyền tạo mã giảm giá cho nhà hàng này.");
+
             promoCode.Code = dto.Code;
             promoCode.Description = dto.Description;
             promoCode.Type = dto.Type;
@@ -118,11 +119,12 @@ namespace DoAn_WebAPI.Services
             var existing = await _promoCodeRepo.GetPromoCodeByIdAsync(id);
             if (existing == null)
                 return false;
-            var restaurant = await _resRepo.GetRestaurantByIdAsync(existing.RestaurantID);
-            if (restaurant == null || restaurant.UserID != userId)
+            var user = await _userRepository.GetUserByIdAsync(userId);
+            if (user == null || user.RestaurantID != existing.RestaurantID)
             {
-                throw new UnauthorizedAccessException("You cannot delete this item.");
+                throw new UnauthorizedAccessException("Bạn không có quyền xóa mã giảm giá này.");
             }
+
             return await _promoCodeRepo.DeletePromoCodeAsync(id);
         }
 

@@ -36,7 +36,10 @@
                                 <div class="p-2">
                                     <h5 class="text-primary">@item.MenuItemName</h5>
                                     <p class="small text-muted mb-2">⭐ @item.AverageRating.ToString("0.0") / 5 (@item.ReviewCount đánh giá)</p>
-                                    <a href="/menuitem/@item.MenuItemID" class="btn btn-outline-primary btn-sm">Xem chi tiết</a>
+                                    <p class="small text-secondary mb-2">
+                                        🏠 @item.RestaurantName
+                                    </p>
+                                    <a href="/restaurant/@item.RestaurantID" class="btn btn-outline-primary btn-sm">Xem chi tiết</a>
                                 </div>
                             </div>
                         }

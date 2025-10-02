@@ -3,6 +3,7 @@ namespace Layout_Client.Model.DTO
     public class CartItemDTO
     {
         public int MenuItemID { get; set; }
+        public int ComboID { get; set; }
         public string Name { get; set; } = "";
         public string ImageUrl { get; set; } = "";
         public decimal SellingPrice { get; set; }

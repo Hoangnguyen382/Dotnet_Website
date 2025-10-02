@@ -1,0 +1,215 @@
+@page "/categories"
+@attribute [Authorize]
+@using Layout_Admin.Models.DTO
+@using Microsoft.AspNetCore.Authorization
+@using Layout_Admin.Model.DTO
+@using Layout_Admin.Service
+@inject CategoryService CategoryService
+@inject UploadService UploadService
+@inject UserService UserService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<!-- Toast container -->
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 1055">
+    @if (!string.IsNullOrEmpty(toastMessage))
+    {
+        <div class="toast show align-items-center text-white @toastClass border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body">@toastMessage</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" @onclick="() => toastMessage = null"></button>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="text-primary"><i class="fas fa-list me-2"></i>Quản lý Danh mục</h3>
+        <button class="btn btn-success" @onclick="OpenCreateModal">
+            <i class="fas fa-plus me-2"></i>Thêm Danh mục
+        </button>
+    </div>
+    @if (isLoading)
+    {
+        <div class="text-center my-5">
+            <div class="spinner-border text-primary"></div>
+            <p class="mt-2">Đang tải dữ liệu...</p>
+        </div>
+    }
+    else if (categories is null || categories.Count == 0)
+    {
+        <div class="alert alert-info">Không tìm thấy danh mục nào phù hợp.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle shadow-sm">
+                <thead class="table-light">
+                    <tr class="text-center">
+                        <th>Tên danh mục</th>
+                        <th>Mô tả</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var category in categories)
+                    {
+                        <tr class="text-center">
+                            <td>@category.Name</td>
+                            <td class="text-start">@category.Description</td>
+                            <td>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-primary" title="Chỉnh sửa" @onclick="async () => await OpenEditModal(category.CategoryID)">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" title="Xoá" @onclick="() => ConfirmDelete(category.CategoryID)">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <!-- Modal Thêm/Chỉnh sửa -->
+    @if (showModal)
+    {
+        <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">@modalTitle</h5>
+                        <button type="button" class="btn-close btn-close-white" @onclick="CloseModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <EditForm Model="categoryRequest" OnValidSubmit="SubmitCategory">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary />
+
+                            <div class="mb-3">
+                                <label class="form-label">Tên danh mục <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="categoryRequest.Name" />
+                                <ValidationMessage For="@(() => categoryRequest.Name)" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Mô tả</label>
+                                <InputTextArea class="form-control" rows="3" @bind-Value="categoryRequest.Description" />
+                            </div>
+
+                            <div class="d-flex justify-content-end mt-3">
+                                <button type="submit" class="btn btn-success me-2">Lưu</button>
+                                <button type="button" class="btn btn-secondary" @onclick="CloseModal">Huỷ</button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Modal Xác nhận Xoá -->
+    @if (confirmDeleteId != null)
+    {
+        <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5);">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Xác nhận xoá</h5>
+                        <button type="button" class="btn-close" @onclick="() => confirmDeleteId = null"></button>
+                    </div>
+                    <div class="modal-body">
+                        Bạn có chắc chắn muốn xoá danh mục này không?
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-danger" @onclick="DeleteConfirmed">Xoá</button>
+                        <button class="btn btn-secondary" @onclick="() => confirmDeleteId = null">Huỷ</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<CategoryResponseDTO> categories = new();
+    private bool isLoading = true;
+    private bool showModal = false;
+    private string modalTitle = "";
+    private CategoryRequestDTO categoryRequest = new();
+    private int? editingCategoryId = null;
+    private int? confirmDeleteId;
+    private string toastMessage;
+    private string toastClass;
+    private int restaurantId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = await UserService.GetCurrentUserAsync();
+        if (user == null) return;
+        restaurantId = user.RestaurantID;
+        await LoadCategories();
+    }
+
+    private async Task LoadCategories()
+    {
+        isLoading = true;
+        categories = await CategoryService.GetCategoriesByRestaurantAsync(restaurantId);
+        isLoading = false;
+    }
+
+    private void OpenCreateModal()
+    {
+        categoryRequest = new();
+        editingCategoryId = null;
+        modalTitle = "Thêm Danh mục";
+        showModal = true;
+    }
+
+    private async Task OpenEditModal(int categoryId)
+    {
+        showModal = true;
+        modalTitle = "Chỉnh sửa Danh mục";
+        var existing = await CategoryService.GetCategoryByIdAsync(categoryId);
+        if (existing != null)
+        {
+            editingCategoryId = categoryId;
+            categoryRequest = new CategoryRequestDTO
+            {
+                Name = existing.Name,
+                Description = existing.Description
+            };
+        }
+    }
+
+    private void CloseModal() => showModal = false;
+
+    private async Task SubmitCategory()
+    {
+        bool result = (editingCategoryId == null)
+            ? await CategoryService.CreateCategoryAsync(categoryRequest, restaurantId)
+            : await CategoryService.UpdateCategoryAsync(editingCategoryId.Value, categoryRequest);
+
+        toastMessage = result ? "Lưu thành công!" : "Thao tác thất bại!";
+        toastClass = result ? "bg-success" : "bg-danger";
+        showModal = false;
+        await LoadCategories();
+    }
+
+    private void ConfirmDelete(int id) => confirmDeleteId = id;
+
+    private async Task DeleteConfirmed()
+    {
+        if (confirmDeleteId != null)
+        {
+            bool result = await CategoryService.DeleteCategoryAsync(confirmDeleteId.Value);
+            toastMessage = result ? "Xoá thành công!" : "Xoá thất bại!";
+            toastClass = result ? "bg-success" : "bg-danger";
+            confirmDeleteId = null;
+            await LoadCategories();
+        }
+    }
+}

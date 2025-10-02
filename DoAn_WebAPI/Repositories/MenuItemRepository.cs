@@ -32,8 +32,7 @@ namespace DoAn_WebAPI.Repositories
         }
         public async Task<MenuItem> CreateMenuItemAsync(MenuItem menuItem)
         {
-            // tạo data cho created_at, updated_at
-            menuItem.CreatedAt = DateTime.UtcNow;
+            menuItem.CreatedAt = DateTime.Now;
             _context.MenuItems.Add(menuItem);
             await _context.SaveChangesAsync();
             return menuItem;

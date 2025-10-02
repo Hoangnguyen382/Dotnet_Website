@@ -21,7 +21,8 @@ namespace DoAn_WebAPI.Services
             {
                 OrderDetailID = od.OrderDetailID,
                 OrderID = od.OrderID,
-                MenuItemID = od.MenuItemID,
+                MenuItemID = od.MenuItemID ?? 0,
+                ComboID = od.ComboID ?? 0,
                 Quantity = od.Quantity,
                 UnitPrice = od.UnitPrice
             });
@@ -34,7 +35,8 @@ namespace DoAn_WebAPI.Services
             {
                 OrderDetailID = detail.OrderDetailID,
                 OrderID = detail.OrderID,
-                MenuItemID = detail.MenuItemID,
+                MenuItemID = detail.MenuItemID ?? 0,
+                ComboID = detail.ComboID ?? 0,
                 Quantity = detail.Quantity,
                 UnitPrice = detail.UnitPrice
             };
@@ -45,15 +47,17 @@ namespace DoAn_WebAPI.Services
             {
                 OrderID = dto.OrderID,
                 MenuItemID = dto.MenuItemID,
+                ComboID = dto.ComboID,
                 Quantity = dto.Quantity,
-                UnitPrice = await GetUnitPriceByMenuItemIdAsync(dto.MenuItemID) // Giả sử lấy giá món
+                UnitPrice = await GetUnitPriceByMenuItemIdAsync(dto.MenuItemID ?? 0)
             };
             await _orderDetailRepo.CreateOrderDetailAsync(detail);
             return new OrderDetailResponseDTO
             {
                 OrderDetailID = detail.OrderDetailID,
                 OrderID = detail.OrderID,
-                MenuItemID = detail.MenuItemID,
+                MenuItemID = detail.MenuItemID ?? 0,
+                ComboID = detail.ComboID ?? 0,
                 Quantity = detail.Quantity,
                 UnitPrice = detail.UnitPrice
             };
@@ -63,7 +67,7 @@ namespace DoAn_WebAPI.Services
             var existDetail = await _orderDetailRepo.GetOrderDetailByIdAsync(id);
             if (existDetail == null) return false;
             existDetail.Quantity = dto.Quantity;
-            existDetail.UnitPrice = await GetUnitPriceByMenuItemIdAsync(dto.MenuItemID);
+            existDetail.UnitPrice = await GetUnitPriceByMenuItemIdAsync(dto.MenuItemID ?? 0);
             await _orderDetailRepo.UpdateOrderDetailAsync(existDetail);
             return true;
         }

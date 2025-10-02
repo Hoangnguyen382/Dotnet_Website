@@ -2,12 +2,26 @@
 @using Layout_Admin.Model.DTO
 @using Layout_Admin.Service
 @inject MenuItemService MenuItemService
+@inject ChatService ChatService
+@inject ChatHubService ChatHubService
 
+@inject ComboService ComboService
+@inject ComboDetailService ComboDetailService
 @inject UserService UserService
 @inject OrderService OrderService
 @inject IJSRuntime JS
 
 <h3 class="text-center mb-4">🧾 Danh sách đơn hàng của bạn</h3>
+
+<div class="date-filter mb-3">
+    <label for="dateInput">
+        <i class="bi bi-calendar-date"></i> Ngày
+    </label>
+    <input id="dateInput" type="date"
+           value="@selectedDate.ToString("yyyy-MM-dd")"
+           @onchange="OnDateChanged" />
+</div>
+
 
 @if (orders == null)
 {
@@ -15,7 +29,7 @@
 }
 else if (!orders.Any())
 {
-    <div class="text-center text-muted">Bạn chưa có đơn hàng nào.</div>
+    <div class="text-center text-muted">Không có đơn hàng nào trong ngày này.</div>
 }
 else
 {
@@ -23,7 +37,7 @@ else
         <table class="table table-hover table-bordered shadow-sm rounded">
             <thead class="table-primary text-center">
                 <tr>
-                    <th>Mã Đơn</th>      
+                    <th>Mã Đơn</th>
                     <th>SDT</th>
                     <th>Địa chỉ</th>
                     <th>Ngày đặt</th>
@@ -45,27 +59,48 @@ else
                         <td class="text-danger fw-bold">@order.TotalAmount.ToString("N0") đ</td>
                         <td>@order.PaymentMethod</td>
                         <td>@order.Note</td>
-                        <td>
-                            <select class="form-select form-select-sm"
-                                @onchange="async e => await UpdateStatusAsync(order.OrderID, e.Value.ToString())">
-                                @foreach (var status in GetNextPossibleStatuses(order.Status))
-                                {
-                                    <option value="@status" selected="@(status == order.Status)">@status</option>
-                                }
-                            </select>
+                        <td class="text-center">
+                            <div class="d-flex justify-content-center align-items-center gap-2">
+                                <span class="badge @(order.Status switch
+                                      {
+                                          "Pending" => "bg-warning text-dark",
+                                          "Processing" => "bg-info text-dark",
+                                          "Complete" => "bg-success",
+                                          _ => "bg-secondary"
+                                      }) me-2">
+                                    @order.Status
+                                </span>
 
+                                @if (order.Status != "Complete")
+                                {
+                                    <button class="btn btn-sm btn-outline-primary rounded-circle" title="Chuyển tiếp"
+                                            @onclick="() => MoveNextStatus(order)">
+                                        <i class="fas fa-forward" style="font-size: 10px;"></i>
+                                    </button>
+                                }
+
+                                @if (order.Status == "Processing")
+                                {
+                                    <button class="btn btn-sm btn-outline-danger rounded-circle" title="Quay lại"
+                                            @onclick="() => UndoStatus(order)">
+                                        <i class="fas fa-undo"></i>
+                                    </button>
+                                }
+                            </div>
                         </td>
-                        <td class="d-flex flex-column gap-1">
+
+                        <td class="d-flex gap-2 justify-content-center">
                             <button class="btn btn-sm btn-outline-primary" @onclick="() => ShowOrderDetails(order.OrderID)">
                                 Xem chi tiết
                             </button>
-                            
-                            
+                            <button class="btn btn-sm btn-outline-success ms-2"
+                                @onclick="() => OpenChat(order.OrderID, order.RestaurantID)">
+                            💬 Chat
+                            </button>
                         </td>
                     </tr>
                 }
             </tbody>
-
         </table>
     </div>
 }
@@ -81,43 +116,57 @@ else
                     <button type="button" class="btn-close" aria-label="Close" @onclick="CloseModal"></button>
                 </div>
                 <div class="modal-body">
-                    <table class="table table-sm table-bordered">
-                        <thead class="table-light text-center">
-                            <tr>
-                                <th>Tên món</th>
-                                <th>Hình Ảnh</th>
-                                <th>Số lượng</th>
-                                <th>Đơn giá</th>
-                                <th>Thành tiền</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var item in selectedOrderDetails)
+                    <div class="order-details">
+                        @foreach (var item in selectedOrderDetails)
+                        {
+                            @if (item.ComboID != null && item.ComboID > 0 && item.UnitPrice > 0)
                             {
-                                <tr>
-                                    <td>@item.MenuItemName</td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <img src="@item.ImageUrl" alt="@item.MenuItemName" style="width: 40px; height: 40px; object-fit: cover;" class="rounded" />
+                                <div class="combo-card">
+                                    <div class="d-flex justify-content-between align-items-center combo-header">
+                                        <div class="d-flex align-items-center">
+                                            <img src="@item.ImageUrl" alt="@item.MenuItemName" class="combo-img me-2" />
+                                            <div>
+                                                <div class="fw-bold text-primary">[Combo] @item.MenuItemName</div>
+                                                <div class="text-muted small">Số lượng: @item.Quantity ×
+                                                    @item.UnitPrice.ToString("N0") đ</div>
+                                            </div>
                                         </div>
-                                    </td>
-                                    <td class="text-center">@item.Quantity</td>
-                                    <td class="text-end">@item.UnitPrice.ToString("N0") đ</td>
-                                    <td class="text-end text-danger fw-semibold">
-                                        @((item.UnitPrice * item.Quantity).ToString("N0")) đ
-                                    </td>
-                                </tr>
+                                        <div class="fw-bold text-danger">@((item.UnitPrice * item.Quantity).ToString("N0")) đ</div>
+                                    </div>
+                                </div>
                             }
-                            <tr class="fw-bold">
-                                <td colspan="4" class="text-end">Tổng cộng:</td>
-                                <td class="text-end text-danger">
-                                    @selectedOrderDetails.Sum(i => i.UnitPrice * i.Quantity).ToString("N0") đ
-                                </td>
-                            </tr>
-                        </tbody>
+                            else if (item.UnitPrice == 0)
+                            {
+                                <div class="combo-sub d-flex align-items-center">
+                                    <i class="fas fa-angle-right text-secondary me-2"></i>
+                                    <img src="@item.ImageUrl" alt="@item.MenuItemName" class="sub-img me-2" />
+                                    <span>@item.MenuItemName x(@item.Quantity)</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="product-row d-flex justify-content-between align-items-center">
+                                    <div class="d-flex align-items-center">
+                                        <img src="@item.ImageUrl" alt="@item.MenuItemName" class="product-img me-2" />
+                                        <div>
+                                            <div class="fw-bold">@item.MenuItemName</div>
+                                            <small class="text-muted">Số lượng: @item.Quantity × @item.UnitPrice.ToString("N0") đ</small>
+                                        </div>
+                                    </div>
+                                    <div class="fw-bold text-danger">@((item.UnitPrice * item.Quantity).ToString("N0")) đ</div>
+                                </div>
+                            }
+                        }
 
-                    </table>
+                        <div class="total-row d-flex justify-content-between fw-bold">
+                            <span>Tổng cộng:</span>
+                            <span class="text-danger">
+                                @selectedOrderDetails.Where(i => i.UnitPrice > 0).Sum(i => i.UnitPrice * i.Quantity).ToString("N0") đ
+                            </span>
+                        </div>
+                    </div>
                 </div>
+
                 <div class="modal-footer">
                     <button class="btn btn-secondary" @onclick="CloseModal">Đóng</button>
                 </div>
@@ -126,15 +175,78 @@ else
     </div>
 }
 
+@if (chattingOrderId > 0)
+{
+    <div class="offcanvas offcanvas-end show" tabindex="-1"
+         style="visibility: visible; background: #fff; width: 500px; box-shadow: -2px 0 15px rgba(0,0,0,0.1);"
+         aria-modal="true" role="dialog">
+        <div class="offcanvas-header bg-success text-white">
+            <h5 class="offcanvas-title">💬 Chat đơn #@chattingOrderId</h5>
+            <button type="button" class="btn-close btn-close-white" @onclick="CloseChat"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column">
+            <div class="chat-messages flex-grow-1 overflow-auto mb-2">
+                @if (messages != null)
+                {
+                    @foreach (var msg in messages)
+                    {
+                        var isMine = msg.SenderId == currentUserId;
+
+                        <div class="chat-message @(isMine ? "mine" : "theirs")">
+                            <div class="bubble">
+                                <span>@msg.Content</span>
+                                <div class="time">@msg.SentAt.ToString("HH:mm")</div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+
+            <div class="chat-input d-flex">
+                <input class="form-control me-2" @bind="newMessage" placeholder="Nhập tin nhắn..." />
+                <button class="btn btn-success" @onclick="SendMessage">Gửi</button>
+            </div>
+        </div>
+    </div>
+}
+
+
 @code {
     private List<OrderResponseDTO>? orders;
-    private OrderRequestDTO? orderRequest;
     private List<OrderDetailResponseDTO>? selectedOrderDetails;
     private int selectedOrderId;
     private int restaurantId { get; set; }
-    private List<string> statuses = new() { "Pending", "Processing", "Completed" };
+
+    private int currentUserId;
+    private string currentUserRole;
+    private int currentConversationId;
+    private int chattingOrderId;
+    private int chattingRestaurantId;
+    private List<MessageResponseDTO> messages = new();
+    private string newMessage = string.Empty;
+
+    private DateTime selectedDate = DateTime.Now;
 
     protected override async Task OnInitializedAsync()
+    {
+        var user = await UserService.GetCurrentUserAsync();
+        if (user != null)
+        {
+            currentUserId = user.UserID;
+            currentUserRole = user.Role;
+        }
+        ChatHubService.OnMessageReceived += (message) =>
+        {
+            if (message.ConversationId == currentConversationId)
+            {
+                messages.Add(message);
+                InvokeAsync(StateHasChanged);
+            }
+        };
+        await LoadOrders();
+    }
+
+    private async Task LoadOrders()
     {
         if (restaurantId == 0)
         {
@@ -146,29 +258,70 @@ else
             }
             restaurantId = user.RestaurantID;
         }
-        orders = await OrderService.GetOrderByRestaurantIdAsync(restaurantId);
+
+        orders = await OrderService.GetOrderByRestaurantIdAsync(restaurantId, selectedDate);
         StateHasChanged();
     }
+
+    private async Task OnDateChanged(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var date))
+        {
+            selectedDate = date;
+            await LoadOrders();
+        }
+    }
+
     private async Task ShowOrderDetails(int orderId)
     {
         selectedOrderId = orderId;
-
         var details = await OrderService.GetOrderDetailByOrderIdAsync(orderId);
-        selectedOrderDetails = new();
 
+        selectedOrderDetails = new();
         foreach (var item in details)
         {
-            var menuItem = await MenuItemService.GetByIdAsync(item.MenuItemID);
-            selectedOrderDetails.Add(new OrderDetailResponseDTO
+            if (item.ComboID != null && item.ComboID > 0)
             {
-                MenuItemID = item.MenuItemID,
-                MenuItemName = menuItem?.Name ?? $"Món #{item.MenuItemID}",
-                ImageUrl = menuItem?.ImageUrl,
-                Quantity = item.Quantity,
-                UnitPrice = item.UnitPrice
-            });
+                var combo = await ComboService.GetComboByIdAsync(item.ComboID.Value);
+                selectedOrderDetails.Add(new OrderDetailResponseDTO
+                {
+                    ComboID = item.ComboID,
+                    MenuItemName = combo?.Name ?? $"Combo #{item.ComboID}",
+                    ImageUrl = combo?.ImageUrl ?? "images/combo-default.png",
+                    Quantity = item.Quantity,
+                    UnitPrice = item.UnitPrice
+                });
+
+                var comboDetails = await ComboDetailService.GetDetailsByComboIdAsync(item.ComboID.Value);
+                foreach (var cd in comboDetails)
+                {
+                    selectedOrderDetails.Add(new OrderDetailResponseDTO
+                    {
+                        MenuItemID = cd.MenuItemID,
+                        MenuItemName = cd.MenuItemName,
+                        ImageUrl = cd.MenuItemImage,
+                        Quantity = cd.Quantity,
+                        UnitPrice = 0
+                    });
+                }
+            }
+            else if (item.MenuItemID.HasValue && item.MenuItemID > 0)
+            {
+                var menuItem = await MenuItemService.GetByIdAsync(item.MenuItemID.Value);
+                selectedOrderDetails.Add(new OrderDetailResponseDTO
+                {
+                    MenuItemID = item.MenuItemID,
+                    MenuItemName = menuItem?.Name ?? $"Món #{item.MenuItemID}",
+                    ImageUrl = menuItem?.ImageUrl ?? "images/item-default.png",
+                    Quantity = item.Quantity,
+                    UnitPrice = item.UnitPrice
+                });
+            }
         }
     }
+
+    private void CloseModal() => selectedOrderDetails = null;
+
     private async Task UpdateStatusAsync(int orderId, string newStatus)
     {
         var order = orders.FirstOrDefault(o => o.OrderID == orderId);
@@ -191,7 +344,7 @@ else
         var result = await OrderService.UpdateOrderAsync(orderId, updateDto);
         if (result)
         {
-            order.Status = newStatus; // Cập nhật trong UI
+            order.Status = newStatus;
             await JS.InvokeVoidAsync("alert", $"✅ Trạng thái đơn hàng #{orderId} đã cập nhật thành: {newStatus}");
         }
         else
@@ -199,19 +352,194 @@ else
             await JS.InvokeVoidAsync("alert", "❌ Cập nhật thất bại");
         }
     }
-    private List<string> GetNextPossibleStatuses(string currentStatus)
+
+    private async Task MoveNextStatus(OrderResponseDTO order)
     {
-        return currentStatus switch
+        string newStatus = order.Status switch
         {
-            "Pending" => new() { "Pending", "Processing" },
-            "Processing" => new() { "Processing", "Complete" },
-            "Complete" => new() { "Complete" }, 
-            _ => new() { currentStatus }
+            "Pending" => "Processing",
+            "Processing" => "Complete",
+            _ => order.Status
         };
+
+        if (newStatus != order.Status)
+            await UpdateStatusAsync(order.OrderID, newStatus);
     }
-    private void CloseModal()
+    private async Task UndoStatus(OrderResponseDTO order)
     {
-        selectedOrderDetails = null;
+        string prevStatus = order.Status switch
+        {
+            "Processing" => "Pending",
+            _ => order.Status
+        };
+
+        if (prevStatus != order.Status)
+            await UpdateStatusAsync(order.OrderID, prevStatus);
+    }
+    private async Task OpenChat(int orderId, int restaurantId)
+    {
+        chattingOrderId = orderId;
+
+        // lấy hoặc tạo conversation
+        var conversation = await ChatService.GetConversationByOrderAsync(orderId);
+        if (conversation == null) return;
+
+        currentConversationId = conversation.ConversationId;
+
+        // lấy lịch sử tin nhắn
+        var msgs = await ChatService.GetMessagesAsync(currentConversationId);
+        messages = msgs?.ToList() ?? new();
+
+        // join hub group
+        await ChatHubService.StartAsync();
+        await ChatHubService.JoinConversation(currentConversationId);
+    }
+
+
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(newMessage)) return;
+
+        var dto = new CreateMessageRequestDTO
+        {
+            ConversationId = currentConversationId,
+            Content = newMessage,
+            SenderId = currentUserId,
+            SenderRole = currentUserRole 
+        };
+        Console.WriteLine($"[SendMessage] ConversationId={dto.ConversationId},Content={dto.Content}, SenderId={dto.SenderId}, Role={dto.SenderRole}");
+        await ChatHubService.SendMessageAsync(dto);
+        newMessage = string.Empty;
+    }
+
+    private void CloseChat()
+    {
+        chattingOrderId = 0;
+        chattingRestaurantId = 0;
+        messages.Clear();
     }
 }
+<style> 
+.order-details { padding: 0.5rem; } 
+.combo-card { 
+    background: #f8f9fa; 
+    border-left: 4px solid #0d6efd; 
+    margin-bottom: 0.75rem; 
+    padding: 0.75rem; 
+} 
+.combo-img { 
+    width: 45px; 
+    height: 45px; 
+    border-radius: 6px; 
+    object-fit: cover; 
+} 
+.sub-img { 
+    width: 30px; 
+    height: 30px; 
+    border-radius: 4px; 
+    object-fit: cover; 
+} 
+.combo-sub { 
+    margin-left: 2rem; 
+    font-size: 0.9rem; 
+    padding: 0.25rem 0; 
+    color: #555; 
+    border-left: 2px dashed #ddd; 
+} 
+.product-row { 
+    border-bottom: 1px solid #eee; 
+    padding: 0.5rem 0; 
+} 
+.product-img { 
+    width: 45px; 
+    height: 45px; 
+    border-radius: 6px; 
+    object-fit: cover; 
+} 
+.total-row { 
+    margin-top: 1rem; 
+    font-size: 1.1rem; 
+} 
+.date-filter {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        max-width: 280px;
+    }
 
+    .date-filter label {
+        font-weight: 600;
+        color: #0d6efd; /* xanh primary Bootstrap */
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .date-filter input[type="date"] {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 15px;
+        transition: all 0.2s ease-in-out;
+    }
+
+    .date-filter input[type="date"]:hover,
+    .date-filter input[type="date"]:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 6px rgba(13, 110, 253, 0.3);
+        outline: none;
+    }
+    .chat-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+}
+
+.chat-message {
+    display: flex;
+    width: 100%;
+}
+
+.chat-message.mine {
+    justify-content: flex-end;
+}
+
+.chat-message.mine .bubble {
+    background: #0084ff;
+    color: #fff;
+    border-bottom-right-radius: 4px;
+    border-bottom-left-radius: 18px;
+}
+
+.chat-message.theirs {
+    justify-content: flex-start;
+}
+
+.chat-message.theirs .bubble {
+    background: #e5e5ea;
+    color: #000;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 18px;
+}
+
+.bubble {
+    max-width: 70%;
+    padding: 10px 14px;
+    border-radius: 18px;
+    font-size: 14px;
+    line-height: 1.4;
+    position: relative;
+}
+
+.bubble .time {
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+    margin-top: 4px;
+    text-align: right;
+}
+
+.chat-message.theirs .bubble .time {
+    color: #666;
+}
+</style>

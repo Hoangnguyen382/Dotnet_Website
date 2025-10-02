@@ -25,10 +25,10 @@ namespace Layout_Admin.Service
 
             return await client.GetFromJsonAsync<List<MenuItemResponseDTO>>(url) ?? new();
         }
-        public async Task<List<CategoryResponseDTO>> GetCategoriesAsync()
+        public async Task<List<CategoryResponseDTO>> GetCategoriesAsync(int restaurantId)
         {
             var client = await _factory.CreateClientAsync();
-            return await client.GetFromJsonAsync<List<CategoryResponseDTO>>("api/Category") ?? new();
+            return await client.GetFromJsonAsync<List<CategoryResponseDTO>>($"api/Category?restaurantId={restaurantId}") ?? new();
         }
 
         public async Task<MenuItemResponseDTO?> GetByIdAsync(int id)

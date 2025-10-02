@@ -9,7 +9,9 @@ namespace DoAn_WebAPI.Models
 
         public int OrderID { get; set; }
 
-        public int MenuItemID { get; set; }
+        public int? ComboID { get; set; }
+
+        public int? MenuItemID { get; set; }
 
         public int Quantity { get; set; }
 

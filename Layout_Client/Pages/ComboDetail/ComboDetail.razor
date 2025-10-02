@@ -1,0 +1,171 @@
+@page "/combodetail/{ComboId:int}"
+@using Layout_Client.Model.DTO
+@using Layout_Client.Models.DTO
+@using Layout_Client.Service
+@inject ComboService ComboService
+@inject CartService CartService
+@inject IJSRuntime JS
+
+<div class="container my-5">
+    @if (combo != null)
+    {
+        <div class="row g-5">
+            <!-- Cột trái: Ảnh combo + ảnh sản phẩm -->
+            <div class="col-lg-6">
+                <div class="main-image mb-4">
+                    <img src="@combo.ImageUrl" alt="@combo.Name" class="img-fluid rounded shadow-sm" />
+                </div>
+
+                <!-- Hình ảnh sản phẩm trong combo -->
+                <div class="d-flex flex-wrap gap-3">
+                    @foreach (var item in combos)
+                    {
+                        <div class="thumb-card">
+                            <img src="@item.MenuItemImage" alt="@item.MenuItemName" class="thumb-img" />
+                            <p class="small mt-1 text-truncate text-center">@item.MenuItemName</p>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Cột phải: Thông tin combo -->
+            <div class="col-lg-6">
+                <h3 class="fw-bold mb-2">@combo.Name</h3>
+                <p class="text-muted mb-4">@combo.Description</p>
+
+                <h4 class="fw-bold text-primary mb-3">@string.Format("{0:N0}₫", combo.Price)</h4>
+                <h6 class="fw-semibold mb-2">📦 Thành phần combo:</h6>
+                <ul class="list-unstyled mb-4">
+                    @foreach (var item in combos)
+                    {
+                        <li class="mb-1">- @item.MenuItemName <span class="text-muted">(@item.Quantity)</span></li>
+                    }
+                </ul>
+
+                <div class="d-grid mt-4">
+                    <button class="btn-add-to-cart" @onclick='() => AddComboToCart(combo)'>
+                        <i class="bi bi-cart-plus me-2"></i> Thêm vào giỏ hàng
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    }
+    else
+    {
+        <p class="text-center text-muted my-5">Đang tải thông tin combo...</p>
+    }
+</div>
+
+@code {
+    [Parameter] public int ComboId { get; set; }
+
+    private ComboResponseDTO? combo;
+    private List<ComboDetailResponseDTO> combos = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        combo = await ComboService.GetComboByIdAsync(ComboId);
+        combos = await ComboService.GetComboDetailsByIdAsync(ComboId);
+    }
+    // Thêm combo vào giỏ hàng
+    private async Task AddComboToCart(ComboResponseDTO combo)
+    {
+        var cartItem = new CartItemDTO
+        {
+            ComboID = combo.ComboID,
+            Name = combo.Name,
+            ImageUrl = combo.ImageUrl,
+            SellingPrice = combo.Price, 
+            Quantity = 1,
+            RestaurantID = combo.RestaurantID 
+        };
+
+        bool added = await CartService.AddToCartAsync(cartItem);
+        if (!added)
+        {
+            bool confirm = await JS.InvokeAsync<bool>("confirm", 
+                "Bạn đang có món ăn từ nhà hàng khác trong giỏ. Bạn có muốn xóa giỏ hàng để thêm combo mới?");
+            if (confirm)
+            {
+                await CartService.ClearCartAsync();
+                await CartService.AddToCartAsync(cartItem);
+                await JS.InvokeVoidAsync("alert", "✅ Đã thêm combo vào giỏ hàng!");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", "❌ Không thể thêm combo từ nhà hàng khác.");
+            }
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", "✅ Đã thêm combo vào giỏ hàng!");
+        }
+    }
+
+}
+<style>
+.main-image img {
+    width: 100%;
+    height: 380px;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+.thumb-card {
+    width: 120px;
+    text-align: center;
+}
+
+.thumb-img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.thumb-img:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.col-lg-6 p,
+.col-lg-6 h3,
+.col-lg-6 h4,
+.col-lg-6 h6,
+.col-lg-6 ul {
+    line-height: 1.6;
+}
+
+.btn-add-to-cart {
+    background: #222222;
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 500;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+    transition: all 0.25s ease;
+    cursor: pointer;
+}
+
+.btn-add-to-cart:hover {
+    background: linear-gradient(135deg, #ff512f, #dd2476);
+    transform: translateY(-1px);
+    box-shadow: 0 5px 12px rgba(0,0,0,0.18);
+}
+
+.btn-add-to-cart i {
+    font-size: 1rem;
+}
+
+}
+
+</style>

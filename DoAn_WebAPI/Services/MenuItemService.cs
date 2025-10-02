@@ -1,12 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using DoAn_WebAPI.Models;
-using DoAn_WebAPI.Data;
-using Microsoft.EntityFrameworkCore;
-using DoAn_WebAPI.Interfaces.IService;
-using DoAn_WebAPI.Models.DTOs;
 using DoAn_WebAPI.Interfaces.IRepository;
+using DoAn_WebAPI.Interfaces.IService;
+using DoAn_WebAPI.Models;
+using DoAn_WebAPI.Models.DTOs;
 
 namespace DoAn_WebAPI.Services
 {
@@ -14,25 +13,23 @@ namespace DoAn_WebAPI.Services
     {
         private readonly IMenuItemRepository _menuItemRepository;
         private readonly IRestaurantRepository _resRepository;
+        private readonly IUserRepository _userRepository;
 
-        public MenuItemService(IMenuItemRepository menuItemRepository, IRestaurantRepository resRepository)
+        public MenuItemService(IMenuItemRepository menuItemRepository, IRestaurantRepository resRepository, IUserRepository userRepository)
         {
             _menuItemRepository = menuItemRepository;
             _resRepository = resRepository;
+            _userRepository = userRepository;
         }
         public async Task<IEnumerable<MenuItemReponseDTO>> GetAllMenuItemAsync(int restaurantId, string? search, int? categoryId, int page, int pageSize)
         {
-            var allItems = await _menuItemRepository.GetMenuItemsByRestaurantAsync(restaurantId); // Lấy theo restaurant
+            var allItems = await _menuItemRepository.GetMenuItemsByRestaurantAsync(restaurantId);
 
             if (!string.IsNullOrEmpty(search))
-            {
                 allItems = allItems.Where(x => x.Name!.ToLower().Contains(search.ToLower()));
-            }
 
             if (categoryId.HasValue && categoryId.Value > 0)
-            {
                 allItems = allItems.Where(x => x.CategoryID == categoryId.Value);
-            }
 
             var pagedItems = allItems
                 .Skip((page - 1) * pageSize)
@@ -44,24 +41,19 @@ namespace DoAn_WebAPI.Services
 
         public async Task<IEnumerable<MenuItemReponseDTO>> GetAllMenuByRestaurantAsync(string? search, int? categoryId, int page, int pageSize, int restaurantId, int userId)
         {
-            var restaurant = await _resRepository.GetRestaurantByIdAsync(restaurantId);
-            if (restaurant == null)
-                throw new KeyNotFoundException("Restaurant not found.");
-            if (restaurant.UserID != userId)
-                throw new UnauthorizedAccessException("You are not authorized to view menu items of this restaurant.");
+            var user = await _userRepository.GetUserByIdAsync(userId);
+            if (user == null || user.RestaurantID != restaurantId)
+                throw new UnauthorizedAccessException("Bạn không có quyền xem menu của nhà hàng này.");
 
-            // Lấy danh sách menu items
-            var item = await _menuItemRepository.GetMenuItemsByRestaurantAsync(restaurantId);
+            var items = await _menuItemRepository.GetMenuItemsByRestaurantAsync(restaurantId);
 
             if (!string.IsNullOrWhiteSpace(search))
-                item = item.Where(x => x.Name.ToLower().Contains(search.ToLower()));
+                items = items.Where(x => x.Name!.ToLower().Contains(search.ToLower()));
 
             if (categoryId.HasValue && categoryId > 0)
-                item = item.Where(x => x.CategoryID == categoryId.Value);
+                items = items.Where(x => x.CategoryID == categoryId.Value);
 
-            var pagedItems = item.Skip((page - 1) * pageSize)
-                                 .Take(pageSize)
-                                 .ToList();
+            var pagedItems = items.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
             return pagedItems.Select(MapToMenuItemReponseDTO);
         }
@@ -77,11 +69,15 @@ namespace DoAn_WebAPI.Services
 
         public async Task<MenuItemReponseDTO> CreateMenuItemAsync(int restaurantID, int userId, MenuItemRequestDTO menuItemRequest)
         {
-            var restaurant = await _resRepository.GetRestaurantByIdAsync(restaurantID);
-            if (restaurant == null || restaurant.UserID != userId)
-            {
-                throw new UnauthorizedAccessException("You are not authorized to add items to this restaurant.");
-            }
+            var user = await _userRepository.GetUserByIdAsync(userId);
+            if (user == null || user.RestaurantID != restaurantID)
+                throw new UnauthorizedAccessException("Bạn không có quyền thêm món cho nhà hàng này.");
+
+            // Kiểm tra trùng tên món
+            var existingNames = await _menuItemRepository.GetMenuItemsByRestaurantAsync(restaurantID);
+            if (existingNames.Any(x => x.Name!.Equals(menuItemRequest.Name, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException("Tên món đã tồn tại trong nhà hàng.");
+
             var menuItem = new MenuItem
             {
                 RestaurantID = restaurantID,
@@ -95,6 +91,7 @@ namespace DoAn_WebAPI.Services
                 ImageUrl = menuItemRequest.ImageUrl,
                 CreatedAt = DateTime.UtcNow
             };
+
             var created = await _menuItemRepository.CreateMenuItemAsync(menuItem);
             return MapToMenuItemReponseDTO(created);
         }
@@ -103,25 +100,26 @@ namespace DoAn_WebAPI.Services
         {
             var existing = await _menuItemRepository.GetMenuItemByIdAsync(id);
             if (existing == null)
-                return null;    
-            var restaurant = await _resRepository.GetRestaurantByIdAsync(existing.RestaurantID);
-            if (restaurant == null || restaurant.UserID != userId)
-            {
-                throw new UnauthorizedAccessException("You cannot edit this item");
-            }
-            var menuItem = new MenuItem
-            {
-                RestaurantID = existing.RestaurantID,
-                CategoryID = menuItemRequest.CategoryID,
-                Name = menuItemRequest.Name,
-                Description = menuItemRequest.Description,
-                SellingPrice = menuItemRequest.Price - (menuItemRequest.DiscountPrice ?? 0),
-                Price = menuItemRequest.Price,
-                DiscountPrice = menuItemRequest.DiscountPrice,
-                IsAvailable = menuItemRequest.IsAvailable,
-                ImageUrl = menuItemRequest.ImageUrl
-            };
-            var updated = await _menuItemRepository.UpdateMenuItemtAsync(id, menuItem);
+                return null;
+
+            var user = await _userRepository.GetUserByIdAsync(userId);
+            if (user == null || user.RestaurantID != existing.RestaurantID)
+                throw new UnauthorizedAccessException("Bạn không có quyền sửa món này.");
+
+            var otherNames = await _menuItemRepository.GetMenuItemsByRestaurantAsync(existing.RestaurantID);
+            if (otherNames.Any(x => x.MenuItemID != id && x.Name!.Equals(menuItemRequest.Name, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException("Tên món đã tồn tại trong nhà hàng.");
+
+            existing.Name = menuItemRequest.Name;
+            existing.Description = menuItemRequest.Description;
+            existing.Price = menuItemRequest.Price;
+            existing.DiscountPrice = menuItemRequest.DiscountPrice;
+            existing.SellingPrice = menuItemRequest.Price - (menuItemRequest.DiscountPrice ?? 0);
+            existing.CategoryID = menuItemRequest.CategoryID;
+            existing.IsAvailable = menuItemRequest.IsAvailable;
+            existing.ImageUrl = menuItemRequest.ImageUrl;
+
+            var updated = await _menuItemRepository.UpdateMenuItemtAsync(id, existing);
             return updated != null ? MapToMenuItemReponseDTO(updated) : null;
         }
 
@@ -130,14 +128,12 @@ namespace DoAn_WebAPI.Services
             var existing = await _menuItemRepository.GetMenuItemByIdAsync(id);
             if (existing == null) return false;
 
-            var restaurant = await _resRepository.GetRestaurantByIdAsync(existing.RestaurantID);
-            if (restaurant == null || restaurant.UserID != userId)
-            {
-                throw new UnauthorizedAccessException("You cannot delete this item.");
-            }
+            var user = await _userRepository.GetUserByIdAsync(userId);
+            if (user == null || user.RestaurantID != existing.RestaurantID)
+                throw new UnauthorizedAccessException("Bạn không có quyền xóa món này.");
+
             return await _menuItemRepository.DeleteMenuItemAsync(id);
         }
-
 
         private MenuItemReponseDTO MapToMenuItemReponseDTO(MenuItem menuItem)
         {
@@ -156,6 +152,5 @@ namespace DoAn_WebAPI.Services
                 ImageUrl = menuItem.ImageUrl
             };
         }
-
     }
 }

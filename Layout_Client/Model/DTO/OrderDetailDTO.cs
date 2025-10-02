@@ -6,8 +6,8 @@ namespace Layout_Client.Model.DTO
     {
         [Required(ErrorMessage = "OrderID is required")]
         public int OrderID { get; set; }
-        [Required(ErrorMessage = "MenuItemID is required")]
-        public int MenuItemID { get; set; }
+        public int? MenuItemID { get; set; }
+        public int? ComboID { get; set; }
         [Required(ErrorMessage = "Quantity is required")]
         [Range(1, int.MaxValue, ErrorMessage = "Quantity must be at least 1")]
         public int Quantity { get; set; }
@@ -20,7 +20,8 @@ namespace Layout_Client.Model.DTO
     {
         public int OrderDetailID { get; set; }
         public int OrderID { get; set; }
-        public int MenuItemID { get; set; }
+        public int? MenuItemID { get; set; }
+        public int? ComboID { get; set; }
         public string? MenuItemName { get; set; }
         public string? ImageUrl { get; set; }
         public int Quantity { get; set; }

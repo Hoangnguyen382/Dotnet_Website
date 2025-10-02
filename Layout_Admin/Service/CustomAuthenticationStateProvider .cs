@@ -59,6 +59,22 @@ namespace Layout_Admin.Service
 
             return keyValuePairs.Select(kvp => new Claim(kvp.Key, kvp.Value.ToString()));
         }
+        public void MarkUserAsAuthenticated(string token)
+        {
+            var claims = ParseClaimsFromJwt(token);
+            var identity = new ClaimsIdentity(claims, "jwt");
+            var user = new ClaimsPrincipal(identity);
+
+            var authState = Task.FromResult(new AuthenticationState(user));
+            NotifyAuthenticationStateChanged(authState);
+        }
+
+        public void MarkUserAsLoggedOut()
+        {
+            var user = new ClaimsPrincipal(new ClaimsIdentity());
+            var authState = Task.FromResult(new AuthenticationState(user));
+            NotifyAuthenticationStateChanged(authState);
+        }
 
         private byte[] ParseBase64WithoutPadding(string base64)
         {

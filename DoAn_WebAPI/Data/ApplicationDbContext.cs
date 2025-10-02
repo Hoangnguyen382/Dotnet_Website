@@ -16,6 +16,11 @@ namespace DoAn_WebAPI.Data
         public DbSet<OrderDetail> OrderDetails { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<Category> Categories { get; set; }
+        public DbSet<Combo> Combos { get; set; }
+        public DbSet<ComboDetail> ComboDetails { get; set; }
+        public DbSet<Conversation> Conversations { get; set; }
+        public DbSet<Message> Messages { get; set; }
+        public DbSet<MessageImage> MessageImages { get; set; }
         // Các kết quả của stored procedure
         public DbSet<RevenueTodayDTO> RevenueTodayResults { get; set; }
         public DbSet<RevenueWeekDTO> RevenueWeekResults { get; set; }
@@ -42,6 +47,38 @@ namespace DoAn_WebAPI.Data
             .WithOne(r => r.User)
             .HasForeignKey<Restaurant>(r => r.UserID)
             .IsRequired();
+            // Conversation
+            modelBuilder.Entity<Conversation>()
+                .HasKey(c => c.ConversationId);
+
+            modelBuilder.Entity<Conversation>()
+                .HasMany(c => c.Messages)
+                .WithOne(m => m.Conversation)
+                .HasForeignKey(m => m.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Message
+            modelBuilder.Entity<Message>()
+                .HasKey(m => m.MessageId);
+
+            modelBuilder.Entity<Message>()
+                .Property(m => m.Content)
+                .HasMaxLength(2000);
+
+            modelBuilder.Entity<Message>()
+                .HasMany(m => m.Images)
+                .WithOne(i => i.Message)
+                .HasForeignKey(i => i.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // MessageImage
+            modelBuilder.Entity<MessageImage>()
+                .HasKey(i => i.MessageImageId);
+
+            modelBuilder.Entity<MessageImage>()
+                .Property(i => i.ImageUrl)
+                .IsRequired()
+                .HasMaxLength(500);
         }
 
     }

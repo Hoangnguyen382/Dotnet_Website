@@ -1,5 +1,5 @@
-using DoAn_WebAPI.Interfaces.IService;
 using DoAn_WebAPI.Interfaces.IRepository;
+using DoAn_WebAPI.Interfaces.IService;
 using DoAn_WebAPI.Models.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,35 +14,37 @@ namespace DoAn_WebAPI.Controllers
     public class DashboardController : ControllerBase
     {
         private readonly IDashboardService _dashboardService;
-        private readonly IRestaurantRepository _restaurantRepository;
+        private readonly IUserRepository _userRepository;
 
-        public DashboardController(IDashboardService dashboardService, IRestaurantRepository restaurantRepository)
+        public DashboardController(IDashboardService dashboardService, IUserRepository userRepository)
         {
             _dashboardService = dashboardService;
-            _restaurantRepository = restaurantRepository;
+            _userRepository = userRepository;
         }
 
-        private int? GetUserIdFromToken()
+        private int GetUserIdFromToken()
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                             ?? User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
 
-            return userIdClaim != null ? int.Parse(userIdClaim) : null;
+            if (string.IsNullOrEmpty(userIdClaim))
+                throw new UnauthorizedAccessException("User ID not found in token.");
+
+            return int.Parse(userIdClaim);
         }
 
-        private async Task<bool> UserOwnsRestaurant(int restaurantId, int userId)
+        private async Task<bool> UserHasAccessToRestaurant(int restaurantId, int userId)
         {
-            var restaurant = await _restaurantRepository.GetRestaurantByIdAsync(restaurantId);
-            return restaurant != null && restaurant.UserID == userId;
+            var user = await _userRepository.GetUserByIdAsync(userId);
+            return user != null && user.RestaurantID == restaurantId;
         }
 
         [HttpGet("revenue/today/{restaurantId}")]
         public async Task<IActionResult> GetTodayRevenue(int restaurantId)
         {
-            var userId = GetUserIdFromToken();
-            if (userId == null) return Unauthorized("User ID not found in token.");
+            int userId = GetUserIdFromToken();
 
-            if (!await UserOwnsRestaurant(restaurantId, userId.Value))
+            if (!await UserHasAccessToRestaurant(restaurantId, userId))
                 return Forbid("Bạn không có quyền truy cập doanh thu của nhà hàng này.");
 
             var revenue = await _dashboardService.GetTodayRevenueAsync(restaurantId);
@@ -52,10 +54,9 @@ namespace DoAn_WebAPI.Controllers
         [HttpGet("revenue/week/{restaurantId}")]
         public async Task<IActionResult> GetWeeklyRevenue(int restaurantId)
         {
-            var userId = GetUserIdFromToken();
-            if (userId == null) return Unauthorized("User ID not found in token.");
+            int userId = GetUserIdFromToken();
 
-            if (!await UserOwnsRestaurant(restaurantId, userId.Value))
+            if (!await UserHasAccessToRestaurant(restaurantId, userId))
                 return Forbid("Bạn không có quyền truy cập doanh thu của nhà hàng này.");
 
             var revenue = await _dashboardService.GetWeeklyRevenueAsync(restaurantId);
@@ -65,10 +66,9 @@ namespace DoAn_WebAPI.Controllers
         [HttpGet("orders/today/{restaurantId}")]
         public async Task<IActionResult> GetOrderCountToday(int restaurantId)
         {
-            var userId = GetUserIdFromToken();
-            if (userId == null) return Unauthorized("User ID not found in token.");
+            int userId = GetUserIdFromToken();
 
-            if (!await UserOwnsRestaurant(restaurantId, userId.Value))
+            if (!await UserHasAccessToRestaurant(restaurantId, userId))
                 return Forbid("Bạn không có quyền truy cập dữ liệu đơn hàng của nhà hàng này.");
 
             var count = await _dashboardService.GetOrderCountTodayAsync(restaurantId);
@@ -78,27 +78,24 @@ namespace DoAn_WebAPI.Controllers
         [HttpGet("bestseller/today/{restaurantId}")]
         public async Task<IActionResult> GetBestSellingItemToday(int restaurantId)
         {
-            var userId = GetUserIdFromToken();
-            if (userId == null) return Unauthorized("User ID not found in token.");
+            int userId = GetUserIdFromToken();
 
-            if (!await UserOwnsRestaurant(restaurantId, userId.Value))
+            if (!await UserHasAccessToRestaurant(restaurantId, userId))
                 return Forbid("Bạn không có quyền truy cập dữ liệu của nhà hàng này.");
 
             var item = await _dashboardService.GetBestSellingItemTodayAsync(restaurantId);
             if (item == null)
-            {
-                return NoContent(); 
-            }
+                return NoContent();
+
             return Ok(item);
         }
 
         [HttpGet("bestseller/month/{restaurantId}")]
         public async Task<IActionResult> GetTopSellingItemsMonthly(int restaurantId)
         {
-            var userId = GetUserIdFromToken();
-            if (userId == null) return Unauthorized("User ID not found in token.");
+            int userId = GetUserIdFromToken();
 
-            if (!await UserOwnsRestaurant(restaurantId, userId.Value))
+            if (!await UserHasAccessToRestaurant(restaurantId, userId))
                 return Forbid("Bạn không có quyền truy cập dữ liệu của nhà hàng này.");
 
             var items = await _dashboardService.GetTopSellingItemMonthlyAsync(restaurantId);

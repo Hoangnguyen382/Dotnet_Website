@@ -65,7 +65,7 @@
     {
         currentUser = await UserService.GetCurrentUserAsync();
         var cart = await CartService.GetCartAsync();
-        cartItemCount = cart.Sum(i => i.Quantity);
+        cartItemCount = cart.Count();
         StateHasChanged();
         CartService.CartChanged += OnCartChanged;
     }
@@ -74,7 +74,7 @@
         InvokeAsync(async () =>
         {
             var cart = await CartService.GetCartAsync();
-            cartItemCount = cart.Sum(i => i.Quantity);
+            cartItemCount = cart.Count();
             StateHasChanged();
         });
     }

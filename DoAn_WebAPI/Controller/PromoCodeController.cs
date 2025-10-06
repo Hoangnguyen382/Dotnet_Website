@@ -62,19 +62,14 @@ namespace DoAn_WebAPI.Controllers
         [Authorize]
         public async Task<IActionResult> ValidatePromo([FromQuery] string code, [FromQuery] int restaurantId, [FromQuery] decimal totalAmount, [FromQuery] int totalQuantity)
         {
-            try
-            {
-                var (discount, promoCodeId) = await _promoCodeService.ValidatePromoCodeAsync(code, restaurantId, totalAmount, totalQuantity);
-                return Ok(new { discount, promoCodeId });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            var result = await _promoCodeService.ValidatePromoCodeAsync(code, restaurantId, totalAmount, totalQuantity);
+            if (!string.IsNullOrEmpty(result.Error))
+                return BadRequest(result);
+            return Ok(result);
         }
 
         [HttpPost]
-        [Authorize]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<ActionResult<PromoCodeResponseDTO>> CreatePromoCodeAsync(int restaurantId, [FromBody] PromoCodeRequestDTO dto)
         {
             if (!ModelState.IsValid)
@@ -93,7 +88,7 @@ namespace DoAn_WebAPI.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> Update(int id, [FromBody] PromoCodeRequestDTO dto)
         {
             if (!ModelState.IsValid)
@@ -108,7 +103,7 @@ namespace DoAn_WebAPI.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> Delete(int id)
         {
             int userId = GetUserIdFromToken();

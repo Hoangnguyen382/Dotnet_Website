@@ -127,10 +127,7 @@ namespace DoAn_WebAPI.Services
 
             return await _promoCodeRepo.DeletePromoCodeAsync(id);
         }
-
-        /// <summary>
-        /// Lấy mã giảm giá hợp lệ, còn hoạt động, thuộc nhà hàng và trong khoảng thời gian hiệu lực
-        /// </summary>
+        
         public async Task<PromoCode> GetValidPromoCodeByCodeAsync(string code, int restaurantId, int userId)
         {
             var promoCode = await _promoCodeRepo.GetPromoCodeByCodeAsync(code);
@@ -150,54 +147,77 @@ namespace DoAn_WebAPI.Services
 
             return promoCode;
         }
-        public async Task<(decimal discount, int? promoCodeId)> ValidatePromoCodeAsync(
-            string code, int restaurantId, decimal totalAmount, int totalQuantity)
+        public async Task<ValidatePromoDTO> ValidatePromoCodeAsync(string code, int restaurantId, decimal totalAmount, int totalQuantity)
         {
+            var result = new ValidatePromoDTO();
             if (string.IsNullOrWhiteSpace(code))
-                throw new ArgumentException("Mã giảm giá không hợp lệ.");
-
+            {
+                result.Error = "Mã giảm giá không hợp lệ.";
+                return result;
+            }
             var promo = await _promoCodeRepo.GetPromoCodeByCodeAsync(code);
             if (promo == null || !promo.IsActive)
-                throw new ArgumentException("Mã giảm giá không hợp lệ.");
-
+            {
+                result.Error = "Mã giảm giá không hợp lệ.";
+                return result;
+            }
             if (promo.RestaurantID != restaurantId)
-                throw new ArgumentException("Mã giảm giá không áp dụng cho nhà hàng này.");
-
+            {
+                result.Error = "Mã giảm giá không áp dụng cho nhà hàng này.";
+                return result;
+            }
             var now = DateTime.UtcNow;
             if ((promo.StartDate.HasValue && promo.StartDate > now) ||
                 (promo.ExpiryDate.HasValue && promo.ExpiryDate < now))
-                throw new ArgumentException("Mã giảm giá đã hết hạn hoặc chưa bắt đầu.");
+            {
+                result.Error = "Mã giảm giá đã hết hạn hoặc chưa bắt đầu.";
+                return result;
+            }
 
             decimal discount = 0;
 
             if (promo.Type == PromoCodeType.AmountDiscount)
             {
                 if (!promo.MinOrderAmount.HasValue || totalAmount < promo.MinOrderAmount.Value)
-                    throw new ArgumentException($"Đơn hàng phải tối thiểu {promo.MinOrderAmount:N0} VND.");
+                {
+                    result.Error = $"Đơn hàng phải tối thiểu {promo.MinOrderAmount:N0} VND.";
+                    return result;
+                }
 
                 if (promo.DiscountAmount is null or <= 0)
-                    throw new ArgumentException("Mã giảm giá không có giá trị giảm hợp lệ.");
+                {
+                    result.Error = "Mã giảm giá không có giá trị giảm hợp lệ.";
+                    return result;
+                }
 
                 discount += promo.DiscountAmount.Value;
             }
             else if (promo.Type == PromoCodeType.QuantityDiscount)
             {
                 if (!promo.MinQuantity.HasValue || totalQuantity < promo.MinQuantity.Value)
-                    throw new ArgumentException($"Bạn phải đặt ít nhất {promo.MinQuantity} món.");
+                {
+                    result.Error = $"Bạn phải đặt ít nhất {promo.MinQuantity} món.";
+                    return result;
+                }
 
                 if (promo.DiscountAmount is null or <= 0)
-                    throw new ArgumentException("Mã giảm giá không có giá trị giảm hợp lệ.");
+                {
+                    result.Error = "Mã giảm giá không có giá trị giảm hợp lệ.";
+                    return result;
+                }
 
                 discount += promo.DiscountAmount.Value;
             }
-
             if (promo.DiscountPercent.HasValue && promo.DiscountPercent.Value > 0)
             {
                 discount += totalAmount * (promo.DiscountPercent.Value / 100);
             }
-
-            return (discount, promo.PromoCodeID);
+            result.Discount = discount;
+            result.PromoCodeId = promo.PromoCodeID;
+            result.Error = null;
+            return result;
         }
+
         private PromoCodeResponseDTO MapToResponseDTO(PromoCode p)
         {
             return new PromoCodeResponseDTO

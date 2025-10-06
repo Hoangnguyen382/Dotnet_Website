@@ -77,26 +77,39 @@
                 if (existingUser != null)
                     throw new InvalidOperationException("Email này đã tồn tại.");
 
+                var tokenBytes = new byte[64];
+                using var rng = RandomNumberGenerator.Create();
+                rng.GetBytes(tokenBytes);
+                var resetToken = Convert.ToBase64String(tokenBytes);
+                var tempPassword = Convert.ToBase64String(RandomNumberGenerator.GetBytes(12));
+                var hashedPassword = BCrypt.Net.BCrypt.HashPassword(tempPassword);
                 var staff = new User
                 {
                     Name = dto.Name,
                     Email = dto.Email,
-                    Password = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+                    Password = hashedPassword,
                     CreatedAt = DateTime.UtcNow,
                     Role = "Staff",
-                    IsEmailVerified = true,
-                    RestaurantID = creator.RestaurantID
+                    IsEmailVerified = false,
+                    RestaurantID = creator.RestaurantID,
+                    TokenResetPassword = resetToken,
+                    ExpiresTokenReset = DateTime.UtcNow.AddHours(24)
                 };
+
                 await _userRepository.CreateUserAsync(staff);
+
+                var baseUrl = _configuration["AdminURL:BaseUrl"];
+                var setPasswordLink = $"{baseUrl}/set-password?token={Uri.EscapeDataString(resetToken)}";
+
                 var emailBody = $@"
                     <h2>Xin chào {staff.Name},</h2>
-                    <p>Bạn đã được tạo tài khoản nhân viên tại nhà hàng {creator.RestaurantID}.</p>
-                    <p>Email: {staff.Email}</p>
-                    <p>Vui lòng đăng nhập để bắt đầu làm việc.</p>";
-                await _emailService.SendEmailAsync(staff.Email, "Tài khoản nhân viên", emailBody);
+                    <p>Bạn đã được mời làm nhân viên tại nhà hàng {creator.RestaurantID}.</p>
+                    <p>Vui lòng nhấn vào link bên dưới để tạo mật khẩu và kích hoạt tài khoản của bạn:</p>
+                    <a href='{setPasswordLink}' style='padding:10px 20px;background:#007BFF;color:#fff;text-decoration:none;'>Tạo mật khẩu</a>";
+
+                await _emailService.SendEmailAsync(staff.Email, "Kích hoạt tài khoản nhân viên", emailBody);
                 return staff;
             }
-
             public async Task<string?> LoginWithGoogleAsync(GoogleLoginDTO dto)
         {
             try
@@ -272,6 +285,7 @@
                 user.Password = BCrypt.Net.BCrypt.HashPassword(resetPassDTO.NewPassword);
                 user.TokenResetPassword = null;
                 user.ExpiresTokenReset = null;
+                user.IsEmailVerified = true;
                 await _userRepository.UpdateUserAsync(user);
                 return user;
             }

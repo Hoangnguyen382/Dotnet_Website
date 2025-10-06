@@ -13,7 +13,6 @@ namespace DoAn_WebAPI.Interfaces.IService
         Task<PromoCodeResponseDTO> UpdatePromoCodeAsync(int id, int userId, PromoCodeRequestDTO dto);
         Task<bool> DeletePromoCodeAsync(int id, int userId);
         Task<PromoCode> GetValidPromoCodeByCodeAsync(string code, int restaurantId, int userId);
-        Task<(decimal discount, int? promoCodeId)> ValidatePromoCodeAsync(
-        string code, int restaurantId, decimal totalAmount, int totalQuantity);
+        Task<ValidatePromoDTO> ValidatePromoCodeAsync(string code, int restaurantId, decimal totalAmount, int totalQuantity);
     }
 }

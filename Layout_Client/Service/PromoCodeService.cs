@@ -25,13 +25,33 @@ namespace Layout_Client.Service
             var client = await _factory.CreateClientAsync();
             return await client.GetFromJsonAsync<List<PromoCodeResponseDTO>>($"api/PromoCode/public?restaurantId={restaurantId}") ?? new();
         }
-        public async Task<(decimal discount, int? promoCodeId)> ValidatePromoAsync(string code, int restaurantId, decimal totalAmount, int totalQuantity)
+        public async Task<ValidatePromoDTO> ValidatePromoCodeAsync(string code, int restaurantId, decimal totalAmount, int totalQuantity)
         {
             var client = await _factory.CreateClientAsync();
-            var _httpClient = client;
-            var response = await _httpClient.GetFromJsonAsync<PromoResult>($"api/Promocode/validate-promo?code={code}&restaurantId={restaurantId}&totalAmount={totalAmount}&totalQuantity={totalQuantity}");
-            return (response.discount, response.promoCodeId);
+            var url = $"api/PromoCode/validate-promo?code={Uri.EscapeDataString(code)}&restaurantId={restaurantId}&totalAmount={(int)totalAmount}&totalQuantity={totalQuantity}";
+            var response = await client.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorResult = await response.Content.ReadFromJsonAsync<ValidatePromoDTO>();
+                return new ValidatePromoDTO
+                {
+                    Error = errorResult?.Error ?? "Mã giảm giá không hợp lệ."
+                };
+            }
+            var result = await response.Content.ReadFromJsonAsync<ValidatePromoDTO>();
+            if (result == null)
+            {
+                return new ValidatePromoDTO
+                {
+                    Error = "Không nhận được dữ liệu từ server."
+                };
+            }
+
+            return result;
         }
+
+
+
         public async Task<PromoCodeResponseDTO?> GetByIdAsync(int id)
         {
             var client = await _factory.CreateClientAsync();

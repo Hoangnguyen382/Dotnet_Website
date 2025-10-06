@@ -23,7 +23,7 @@ namespace DoAn_WebAPI.Repositories
             return image;
         }
 
-        public async Task<IEnumerable<MessageImage>> GetByMessageIdAsync(int messageId)
+        public async Task<List<MessageImage>> GetByMessageIdAsync(int messageId)
             => await _context.MessageImages.Where(i => i.MessageId == messageId).ToListAsync();
     }
 }

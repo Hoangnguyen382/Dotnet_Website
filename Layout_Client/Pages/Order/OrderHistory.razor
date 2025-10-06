@@ -4,6 +4,7 @@
 @using Layout_Client.Service
 @inject ChatHubService ChatHubService
 @inject ILocalStorageService LocalStorageService
+@inject UploadService UploadService
 @inject OrderService OrderService
 @inject UserService UserService
 @inject ChatService ChatService
@@ -152,41 +153,73 @@ else
 
 @if (chattingOrderId > 0)
 {
-    <div class="offcanvas offcanvas-end show" tabindex="-1"
-         style="visibility: visible; background: #fff; width: 500px; box-shadow: -2px 0 15px rgba(0,0,0,0.1);"
-         aria-modal="true" role="dialog">
-        <div class="offcanvas-header bg-success text-white">
-            <h5 class="offcanvas-title">💬 Chat đơn #@chattingOrderId</h5>
-            <button type="button" class="btn-close btn-close-white" @onclick="CloseChat"></button>
-        </div>
-        <div class="offcanvas-body d-flex flex-column">
-            <div class="chat-messages flex-grow-1 overflow-auto mb-2">
-                @if (messages != null)
-                {
-                    @foreach (var msg in messages)
-                    {
-                        var isMine = msg.SenderId == currentUserId;
+    <div class="messenger-chat">
+    <div class="chat-header d-flex justify-content-between align-items-center">
+        <span>💬 Chat đơn #@chattingOrderId</span>
+        <button class="btn-close btn-close-white btn-sm" @onclick="CloseChat"></button>
+    </div>
 
-                        <div class="chat-message @(isMine ? "mine" : "theirs")">
-                            <div class="bubble">
-                                <span>@msg.Content</span>
-                                <div class="time">@msg.SentAt.ToString("HH:mm")</div>
-                            </div>
+    <div class="chat-messages flex-grow-1 overflow-auto">
+        @if (messages != null)
+        {
+            @foreach (var msg in messages)
+            {
+                var isMine = msg.SenderId == currentUserId;
+                <div class="chat-message @(isMine ? "mine" : "theirs")">
+                    @if (msg.Images != null && msg.Images.Any())
+                    {
+                        <div class="chat-images">
+                            @foreach (var img in msg.Images)
+                            {
+                                <img src="@img.ImageUrl" class="chat-img" />
+                            }
                         </div>
                     }
-                }
-            </div>
 
-            <div class="chat-input d-flex">
-                <input class="form-control me-2" @bind="newMessage" placeholder="Nhập tin nhắn..." />
-                <button class="btn btn-success" @onclick="SendMessage">Gửi</button>
-            </div>
-        </div>
+                    @if (!string.IsNullOrWhiteSpace(msg.Content))
+                    {
+                        <div class="bubble">
+                            <div class="chat-text">@msg.Content</div>
+                            <div class="time">@msg.SentAt.ToString("HH:mm")</div>
+                        </div>
+                    }
+                </div>
+            }
+        }
     </div>
+
+    <div class="chat-input d-flex gap-1 align-items-center mt-1 mb-2">
+        <label for="fileInput" class="btn btn-light btn-sm p-1" style="cursor:pointer;">
+            <i class="bi bi-image text-primary"></i>
+        </label>
+        <InputFile id="fileInput" OnChange="OnFilesSelected" multiple style="display:none;" />
+        <input class="form-control form-control-sm" @bind="newMessage" placeholder="Nhập tin nhắn..." />
+        <button class="btn btn-primary btn-sm" @onclick="SendMessage">Gửi</button>
+    </div>
+
+    @if (selectedImageUrls.Any())
+    {
+        <div class="preview-images d-flex flex-wrap mt-1">
+            @foreach (var img in selectedImageUrls)
+            {
+                <div class="position-relative me-2 mb-2">
+                    <img src="@img" class="preview-img" />
+                    <button type="button" class="btn-close btn-close-red btn-sm position-absolute top-0 end-0"
+                            style="transform: translate(25%, -25%);"
+                            @onclick="() => RemoveImage(img)">
+                    </button>
+                </div>
+            }
+        </div>
+    }
+
+</div>
 }
 
 @code {
     private List<OrderResponseDTO>? orders;
+    private List<string> selectedImageUrls = new();
+
     private List<OrderDetailResponseDTO>? selectedOrderDetails;
     private int selectedOrderId;
    
@@ -290,21 +323,44 @@ else
         await ChatHubService.JoinConversation(currentConversationId);
     }
 
+    private async Task OnFilesSelected(InputFileChangeEventArgs e)
+    {
+        foreach (var file in e.GetMultipleFiles())
+        {
+            try
+            {
+                var url = await UploadService.UploadImageAsync(file);
+                if (!string.IsNullOrEmpty(url))
+                {
+                    selectedImageUrls.Add(url);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Upload failed: {ex.Message}");
+            }
+        }
+    }
+    private void RemoveImage(string imgUrl)
+    {
+        selectedImageUrls.Remove(imgUrl);
+    }
 
     private async Task SendMessage()
     {
-        if (string.IsNullOrWhiteSpace(newMessage)) return;
-
+        if (string.IsNullOrWhiteSpace(newMessage) && !selectedImageUrls.Any())
+        return;
         var dto = new CreateMessageRequestDTO
         {
             ConversationId = currentConversationId,
             Content = newMessage,
             SenderId = currentUserId,
-            SenderRole = currentUserRole 
+            SenderRole = currentUserRole,
+            ImageUrls = selectedImageUrls.ToList()
         };
-        Console.WriteLine($"[SendMessage] ConversationId={dto.ConversationId},Content={dto.Content}, SenderId={dto.SenderId}, Role={dto.SenderRole}");
         await ChatHubService.SendMessageAsync(dto);
         newMessage = string.Empty;
+        selectedImageUrls.Clear();
     }
 
     private void CloseChat()
@@ -351,51 +407,147 @@ else
     padding: 10px;
 }
 
+.messenger-chat {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 320px;
+    max-height: 450px; 
+    height: 450px;    
+    max-height: 450px;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    z-index: 1050;
+}
+
+.chat-header {
+    background-color: #0084ff;
+    color: #fff;
+    padding: 6px 10px;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.chat-messages {
+    flex: 1 1 auto;
+    overflow-y: auto;   
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+}
+
 .chat-message {
     display: flex;
+    flex-direction: column;
     width: 100%;
 }
 
 .chat-message.mine {
-    justify-content: flex-end;
+    align-items: flex-end;
 }
-
+.bubble {
+    display: flex;
+    flex-direction: column; /* chữ và time xếp dọc */
+    background: #0084ff;
+    color: #fff;
+    border-radius: 18px 18px 4px 18px;
+    padding: 6px 10px;
+    max-width: 70%;
+    font-size: 13px;
+}
 .chat-message.mine .bubble {
     background: #0084ff;
     color: #fff;
-    border-bottom-right-radius: 4px;
-    border-bottom-left-radius: 18px;
+    border-radius: 18px 18px 4px 18px;
+    padding: 6px 10px;
+    max-width: 70%;
+    font-size: 13px;
+    align-items: flex-end;
 }
 
 .chat-message.theirs {
-    justify-content: flex-start;
+    align-items: flex-start;
 }
 
 .chat-message.theirs .bubble {
-    background: #e5e5ea;
+    background: #f1f0f0;
     color: #000;
-    border-bottom-left-radius: 4px;
-    border-bottom-right-radius: 18px;
+    border-radius: 18px 18px 18px 4px;
 }
 
-.bubble {
-    max-width: 70%;
-    padding: 10px 14px;
-    border-radius: 18px;
-    font-size: 14px;
-    line-height: 1.4;
-    position: relative;
+.chat-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 4px; 
+}
+
+.chat-img {
+    border-radius: 10px;
+    cursor: pointer;
+    max-width: 120px;
+    max-height: 120px;
+    object-fit: cover;
+    transition: transform 0.2s ease;
+}
+
+.chat-img:hover {
+    transform: scale(1.05);
+}
+
+.chat-text {
+    word-wrap: break-word;
 }
 
 .bubble .time {
     font-size: 11px;
     color: rgba(255,255,255,0.7);
-    margin-top: 4px;
     text-align: right;
 }
 
 .chat-message.theirs .bubble .time {
-    color: #666;
+    color: #555;
 }
+
+.chat-input {
+    padding: 4px 6px;
+    margin-bottom: 10px;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 4px;
+}
+
+.chat-input input.form-control-sm {
+    font-size: 13px;
+    margin-bottom: 0;
+    padding: 4px 8px;
+}
+
+.chat-input button {
+    font-size: 13px;
+    padding: 4px 10px;
+}
+
+.preview-images {
+    padding: 4px 6px;
+}
+
+.preview-img {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 6px;
+    margin-right: 4px;
+    margin-bottom: 4px;
+    border: 1px solid #ddd;
+}
+
 
 </style>

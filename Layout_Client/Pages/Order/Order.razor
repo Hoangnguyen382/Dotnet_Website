@@ -153,7 +153,7 @@ else
             </div>
         }
     </div>
-}
+
 @code {
     private List<CartItemDTO> cartItems = new();
     private List<UserDTO> users = new();
@@ -201,25 +201,30 @@ else
     {
         promoMessage = string.Empty;
         finalTotal = totalAmount;
-
-        (decimal discount, int? promoCodeId) = await PromoCodeService.ValidatePromoAsync(
-        orderRequest.Code!,
-        cartItems.First().RestaurantID,
-        totalAmount,
-        cartItems.Sum(i => i.Quantity)
+        discountAmount = 0;
+        var result = await PromoCodeService.ValidatePromoCodeAsync(
+            orderRequest.Code!,
+            cartItems.First().RestaurantID,
+            totalAmount,
+            cartItems.Sum(i => i.Quantity)
         );
-
-        if (discount > 0)
+        if (!string.IsNullOrEmpty(result.Error))
         {
-            discountAmount = discount;
-            finalTotal = totalAmount - discountAmount;
-        }
-        else
-        {
-            promoMessage = "❌ Mã giảm giá không hợp lệ.";
+            promoMessage = $"❌ {result.Error}";
+            discountAmount = 0;
             finalTotal = totalAmount;
+            return;
+        }
+
+        if (result.Discount > 0)
+        {
+            discountAmount = result.Discount;
+            finalTotal = totalAmount - discountAmount;
+            promoMessage = $"✅ Mã hợp lệ! Giảm {discountAmount:N0} VND.";
         }
     }
+
+
     private async Task HandleCheckout()
     {
         errorMessage = null;

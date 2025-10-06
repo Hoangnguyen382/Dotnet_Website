@@ -110,8 +110,7 @@ public class ChatService : IChatService
 
         var created = await _msgRepo.CreateAsync(message);
 
-        // Nếu client đã upload ảnh trước (image urls), lưu vào bảng MessageImage
-        if (dto.ImageUrls != null)
+        if (dto.ImageUrls != null && dto.ImageUrls.Any())
         {
             foreach (var url in dto.ImageUrls)
             {
@@ -122,12 +121,8 @@ public class ChatService : IChatService
                 };
                 await _imgRepo.CreateAsync(img);
             }
-
-            // reload images
-            created = await _msgRepo.GetMessagesByConversationIdAsync(created.ConversationId, 0, 1)
-                        .ContinueWith(t => t.Result.FirstOrDefault() ?? created);
+            created.Images = await _imgRepo.GetByMessageIdAsync(created.MessageId);
         }
-
         return new MessageResponseDTO
         {
             MessageId = created.MessageId,

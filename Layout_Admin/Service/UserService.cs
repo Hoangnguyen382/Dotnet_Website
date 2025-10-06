@@ -18,7 +18,7 @@ namespace Layout_Admin.Service
             _localStorage = localStorage;
             _factory = factory;
             _authProvider = authProvider;
-        }   
+        }
 
         public async Task<bool> LoginAsync(LoginDTO login)
         {
@@ -95,6 +95,11 @@ namespace Layout_Admin.Service
             if (!response.IsSuccessStatusCode)
                 return null;
             return await response.Content.ReadFromJsonAsync<UserResponseDTO>();
+        }
+        public async Task<bool> ResetPasswordAsync(ResetPassDTO dto)
+        {
+            var response = await _http.PostAsJsonAsync("reset-password", dto);
+            return response.IsSuccessStatusCode;
         }
     }
 }

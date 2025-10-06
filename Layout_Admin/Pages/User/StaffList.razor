@@ -105,6 +105,7 @@
                                 <label class="form-label fw-semibold">Tên</label>
                                 <InputText class="form-control" @bind-Value="staffRequest.Name" required />
                             </div>
+
                             <div class="mb-3">
                                 <label class="form-label fw-semibold">Email</label>
                                 <InputText class="form-control" type="email" @bind-Value="staffRequest.Email" required />
@@ -112,17 +113,9 @@
 
                             @if (editingUserId == null)
                             {
-                                <div class="row">
-                                    <div class="col-md-6 mb-3">
-                                        <label class="form-label fw-semibold">Mật khẩu</label>
-                                        <InputText class="form-control" type="password" 
-                                                   @bind-Value="staffRequest.Password" required />
-                                    </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label class="form-label fw-semibold">Xác nhận mật khẩu</label>
-                                        <InputText class="form-control" type="password" 
-                                                   @bind-Value="confirmPassword" required />
-                                    </div>
+                                <div class="alert alert-info py-2 small">
+                                    <i class="fas fa-envelope me-1"></i> 
+                                    Mật khẩu sẽ được thiết lập thông qua email. Nhân viên sẽ nhận email để đặt lại mật khẩu.
                                 </div>
                             }
 
@@ -160,7 +153,6 @@
     private int? editingUserId = null;
     private string toastMessage;
     private string toastClass;
-    private string confirmPassword = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -180,8 +172,7 @@
 
     private void OpenCreateModal()
     {
-        staffRequest = new UserDTO();
-        confirmPassword = "";
+        staffRequest = new UserDTO { Role = "staff" };
         editingUserId = null;
         modalTitle = "Thêm nhân viên";
         showModal = true;
@@ -204,16 +195,17 @@
 
     private async Task SubmitStaff()
     {
-        if (editingUserId == null && staffRequest.Password != confirmPassword)
-        {
-            toastMessage = "Mật khẩu và xác nhận mật khẩu không khớp!";
-            toastClass = "bg-danger";
-            return;
-        }
+        bool result;
 
-        var result = editingUserId == null
-            ? await UserService.CreateStaffAsync(staffRequest) != null
-            : await UserService.UpdateRoleUserAsync(editingUserId.Value, staffRequest.Role, staffRequest);
+        if (editingUserId == null)
+        {
+            // Tạo tài khoản không cần password — server sẽ xử lý gửi email reset
+            result = await UserService.CreateStaffAsync(staffRequest) != null;
+        }
+        else
+        {
+            result = await UserService.UpdateRoleUserAsync(editingUserId.Value, staffRequest.Role, staffRequest);
+        }
 
         toastMessage = result ? "Lưu thành công!" : "Thao tác thất bại!";
         toastClass = result ? "bg-success" : "bg-danger";

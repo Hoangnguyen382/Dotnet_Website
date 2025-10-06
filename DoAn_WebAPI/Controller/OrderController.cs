@@ -88,7 +88,6 @@ namespace DoAn_WebAPI.Controllers
             }
             int userId = int.Parse(userIdClaim);
             var order = await _orderService.CreateOrderAsync(userId, restaurantID, dto.Order, dto.OrderDetails);
-            // Gửi thông báo tới Admin
             await _hubContext.Clients.All.SendAsync("ReceiveOrderNotification", 
                         $"Bạn có đơn hàng mới #{order.OrderID} từ {restaurant.Name}");
             return CreatedAtAction(nameof(GetById), new { id = order.OrderID }, order);

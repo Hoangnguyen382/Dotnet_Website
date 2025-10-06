@@ -4,6 +4,6 @@ namespace DoAn_WebAPI.Interfaces.IRepository
     public interface IMessageImageRepository
     {
         Task<MessageImage> CreateAsync(MessageImage image);
-        Task<IEnumerable<MessageImage>> GetByMessageIdAsync(int messageId);
+        Task<List<MessageImage>> GetByMessageIdAsync(int messageId);
     }
 }

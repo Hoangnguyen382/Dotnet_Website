@@ -31,7 +31,7 @@ namespace DoAn_WebAPI.Controllers
         }
 
         [HttpPost("create")]
-        [Authorize]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> CreateCategory(int restaurantID, [FromBody] CategoryRequestDTO categoryRequest)
         {
             if (!ModelState.IsValid)
@@ -68,7 +68,7 @@ namespace DoAn_WebAPI.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> UpdateCategory(int id, [FromBody] CategoryRequestDTO categoryRequest)
         {
             if (!ModelState.IsValid)
@@ -87,7 +87,7 @@ namespace DoAn_WebAPI.Controllers
         }
 
         [HttpDelete("{id}")]
-            [Authorize]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> DeleteCategory(int id)
         {
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 

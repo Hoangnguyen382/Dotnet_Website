@@ -61,7 +61,7 @@ namespace DoAn_WebAPI.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<ActionResult<RestaurantResponseDTO>> UpdateRestaurant(int id, [FromBody] RestaurantRequestDTO restaurantRequest)
         {
             int userId = GetUserIdFromToken();
@@ -74,7 +74,7 @@ namespace DoAn_WebAPI.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> DeleteRestaurant(int id)
         {
             int userId = GetUserIdFromToken();

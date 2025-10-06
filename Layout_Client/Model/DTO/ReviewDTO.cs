@@ -18,9 +18,11 @@ namespace Layout_Client.Model.DTO
     {
         public int UserID { get; set; }
         public int RestaurantID { get; set; }
+        [Required(ErrorMessage = "Vui lòng chọn món ăn")]
         public int MenuItemID { get; set; }
-        [Range(1, 5)]
+        [Range(1, 5, ErrorMessage = "Số sao phải từ 1–5")]
         public int Rating { get; set; }
+         [Required(ErrorMessage = "Vui lòng nhập bình luận")]
         public string? Comment { get; set; }
     }
 }

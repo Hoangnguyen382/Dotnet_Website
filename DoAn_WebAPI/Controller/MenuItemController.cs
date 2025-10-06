@@ -58,7 +58,7 @@ namespace DoAn_WebAPI.Controllers
         }
 
         [HttpPost("create")]
-        [Authorize]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> CreateMenuItem(int restaurantId, [FromBody] MenuItemRequestDTO menuItemDto)
         {
             if (!ModelState.IsValid)
@@ -70,7 +70,7 @@ namespace DoAn_WebAPI.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> UpdateMenuItem(int id, [FromBody] MenuItemRequestDTO menuItemDto)
         {
             if (!ModelState.IsValid)
@@ -85,7 +85,7 @@ namespace DoAn_WebAPI.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> DeleteMenuItem(int id)
         {
             int userId = GetUserIdFromToken();

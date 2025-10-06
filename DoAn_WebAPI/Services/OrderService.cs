@@ -75,7 +75,7 @@ namespace DoAn_WebAPI.Services
                 if (detailDto.Quantity < 1)
                     throw new ArgumentException("Số lượng mỗi sản phẩm/combo phải ít nhất là 1.");
 
-                if (detailDto.ComboID.HasValue) // 👉 Ưu tiên combo trước
+                if (detailDto.ComboID.HasValue) 
                 {
                     var combo = await _comboRepository.GetComboByIdAsync(detailDto.ComboID.Value);
                     if (combo == null)
@@ -115,14 +115,12 @@ namespace DoAn_WebAPI.Services
                 }
             }
 
-            // ✅ Áp dụng mã giảm giá nếu có
             if (!string.IsNullOrWhiteSpace(dto.Code))
             {
-                var (discount, promoCodeId) = await _promoCodeService.ValidatePromoCodeAsync(dto.Code, restaurantID, totalAmount, totalQuantity);
-                totalAmount -= discount;
-                order.PromoCodeID = promoCodeId;
+                var promocode = await _promoCodeService.ValidatePromoCodeAsync(dto.Code, restaurantID, totalAmount, totalQuantity);
+                totalAmount -= promocode.Discount;
+                order.PromoCodeID = promocode.PromoCodeId;
             }
-            // Bảo đảm tổng tiền không âm
             if (totalAmount < 0) totalAmount = 0;
 
             order.TotalAmount = totalAmount;

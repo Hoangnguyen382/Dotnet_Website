@@ -57,7 +57,7 @@
     {
         HubConnection.On<string>("ReceiveOrderNotification", (message) =>
         {
-            notifications.Insert(0, message); // thêm vào đầu
+            notifications.Insert(0, message); 
             unreadCount++;
             StateHasChanged();
         });
@@ -71,7 +71,7 @@
     private void ToggleNotifications()
     {
         showDropdown = !showDropdown;
-        if (showDropdown) unreadCount = 0; // reset số badge khi mở
+        if (showDropdown) unreadCount = 0; 
     }
 
     private void GoToOrders()

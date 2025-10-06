@@ -47,7 +47,7 @@ namespace DoAn_WebAPI.Controller
         }
 
         [HttpPost("restaurant/{restaurantId}")]
-        [Authorize]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<ActionResult<ComboResponseDTO>> CreateCombo(int restaurantId, [FromBody] ComboRequestDTO dto)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
@@ -58,7 +58,7 @@ namespace DoAn_WebAPI.Controller
         }
 
         [HttpPut("{comboId}")]
-        [Authorize]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<ActionResult<ComboResponseDTO>> UpdateCombo(int comboId, [FromBody] ComboRequestDTO dto)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
@@ -77,7 +77,7 @@ namespace DoAn_WebAPI.Controller
         }
 
         [HttpDelete("{comboId}")]
-        [Authorize]
+        [Authorize(Roles = "Admin,Manager")]
         public async Task<IActionResult> DeleteCombo(int comboId)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value

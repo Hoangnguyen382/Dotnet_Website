@@ -1,0 +1,106 @@
+@page "/set-password"
+@using Layout_Admin.Model.DTO
+@using Layout_Admin.Service
+@using Microsoft.AspNetCore.WebUtilities
+@inject NavigationManager Navigation
+@inject UserService UserService
+
+<h3 class="text-center mb-4">🔐 Đặt mật khẩu mới</h3>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow">
+                <div class="card-body">
+                    @if (string.IsNullOrEmpty(token))
+                    {
+                        <div class="alert alert-danger">Liên kết không hợp lệ hoặc đã hết hạn.</div>
+                    }
+                    else if (isSuccess)
+                    {
+                        <div class="alert alert-success">@message</div>
+                        <a href="/login" class="btn btn-success w-100 mt-3">Đăng nhập</a>
+                    }
+                    else
+                    {
+                        <div class="form-group mb-3">
+                            <label for="password">Mật khẩu mới</label>
+                            <input @bind="password" type="password" class="form-control" id="password" placeholder="Nhập mật khẩu mới" />
+                        </div>
+                        <div class="form-group mb-3">
+                            <label for="confirmPassword">Xác nhận mật khẩu</label>
+                            <input @bind="confirmPassword" type="password" class="form-control" id="confirmPassword" placeholder="Nhập lại mật khẩu" />
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(message) && !isSuccess)
+                        {
+                            <div class="alert alert-danger">@message</div>
+                        }
+
+                        <button @onclick="HandleSubmit" class="btn btn-primary w-100" disabled="@isSubmitting">
+                            @(isSubmitting ? "Đang xử lý..." : "Xác nhận")
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string token = string.Empty;
+    private string password = string.Empty;
+    private string confirmPassword = string.Empty;
+    private string message = string.Empty;
+    private bool isSubmitting = false;
+    private bool isSuccess = false;
+
+    protected override void OnInitialized()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("token", out var t))
+        {
+            token = t!;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (string.IsNullOrEmpty(password) || string.IsNullOrEmpty(confirmPassword))
+        {
+            message = "Vui lòng nhập đầy đủ mật khẩu.";
+            return;
+        }
+        if (password != confirmPassword)
+        {
+            message = "Mật khẩu xác nhận không khớp.";
+            return;
+        }
+
+        isSubmitting = true;
+        message = string.Empty;
+
+        var dto = new ResetPassDTO
+        {
+            ResetToken = token,
+            NewPassword = password
+        };
+
+        var result = await UserService.ResetPasswordAsync(dto);
+        if (result)
+        {
+            isSuccess = true;
+            message = "Đặt mật khẩu thành công! Đang chuyển hướng đến trang đăng nhập...";
+            await Task.Delay(3000);
+            Navigation.NavigateTo("/login", forceLoad: true);
+        }
+        else
+        {
+            message = "Đặt mật khẩu thất bại. Vui lòng kiểm tra lại liên kết hoặc thử lại sau.";
+        }
+
+        isSubmitting = false;
+    }
+
+}

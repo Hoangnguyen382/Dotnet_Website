@@ -5,7 +5,7 @@
 namespace DoAn_WebAPI.Migrations
 {
     /// <inheritdoc />
-    public partial class UpdateChatTable : Migration
+    public partial class MakeRestaurantIDNullable : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

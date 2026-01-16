@@ -20,6 +20,8 @@ namespace DoAn_WebAPI.Models
 
         public virtual Order? Order { get; set; }
         public virtual MenuItem? MenuItem { get; set; }
+        public virtual Combo? Combo { get; set; }
+
     }
 
 }

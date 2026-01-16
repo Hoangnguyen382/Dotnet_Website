@@ -12,7 +12,6 @@ public class ReviewService
         _factory = factory;
     }
 
-    // ✅ Lấy đánh giá theo nhà hàng
     public async Task<List<ReviewResponseDTO>> GetReviewsByRestaurantIdAsync(int restaurantId)
     {
         var client = await _factory.CreateClientAsync();
@@ -20,7 +19,6 @@ public class ReviewService
         return await client.GetFromJsonAsync<List<ReviewResponseDTO>>(url);
     }
 
-    // ✅ Lấy đánh giá theo món ăn
     public async Task<List<ReviewResponseDTO>> GetReviewsByMenuItemIdAsync(int menuItemId)
     {
         var client = await _factory.CreateClientAsync();
@@ -38,7 +36,6 @@ public class ReviewService
         return await client.GetFromJsonAsync<List<RestaurantRatingDTO>>($"api/Reviews/top-restaurants?top={top}");
     }
 
-    // ✅ Lấy tất cả review (dành cho admin hoặc thống kê)
     public async Task<List<ReviewResponseDTO>> GetAllReviewsAsync()
     {
         var client = await _factory.CreateClientAsync();
@@ -55,9 +52,6 @@ public class ReviewService
         var client = await _factory.CreateClientAsync();
         return await client.GetFromJsonAsync<double>($"api/Reviews/average/menuitem/{menuItemId}");
     }
-
-
-    // ✅ Tạo mới đánh giá
     public async Task<bool> CreateReviewAsync(int userId, ReviewRequestDTO dto)
     {
         var client = await _factory.CreateClientAsync();
@@ -65,7 +59,6 @@ public class ReviewService
         return response.IsSuccessStatusCode;
     }
 
-    // ✅ Xóa đánh giá
     public async Task<bool> DeleteReviewAsync(int reviewId)
     {
         var client = await _factory.CreateClientAsync();

@@ -153,7 +153,7 @@ else
             </div>
         }
     </div>
-
+}
 @code {
     private List<CartItemDTO> cartItems = new();
     private List<UserDTO> users = new();
@@ -175,39 +175,54 @@ else
         cartItems = await CartService.GetCartAsync() ?? new List<CartItemDTO>();
         totalAmount = cartItems.Any() ? cartItems.Sum(i => i.SellingPrice * i.Quantity) : 0;
         finalTotal = totalAmount;
+        
         var uri = new Uri(Navigation.Uri);
         var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        
         if (query.ContainsKey("errorCode"))
         {
             var errorCode = query["errorCode"].ToString();
+            var orderId = query.ContainsKey("orderId") ? query["orderId"].ToString() : "";
+            
             if (errorCode == "0")
             {
+                // Thanh toán thành công
                 await CartService.ClearCartAsync();
-                toastMessage = "🎉 Thanh toán MoMo thành công và đơn hàng đã được lưu!";
+                toastMessage = $"🎉 Thanh toán MoMo thành công! Mã đơn hàng: {orderId}";
                 toastClass = "bg-success";
-                await Task.Delay(2000);
+                await Task.Delay(3000);
                 Navigation.NavigateTo("/orders");
             }
             else
             {
-                toastMessage = "⚠️ Thanh toán MoMo thất bại hoặc bị hủy!";
+                // Thanh toán thất bại
+                toastMessage = $"⚠️ Thanh toán MoMo thất bại (Mã lỗi: {errorCode})";
                 toastClass = "bg-warning";
-                await Task.Delay(2000);
-                Navigation.NavigateTo("/orders");
+                await Task.Delay(3000);
+                Navigation.NavigateTo("/checkout", replace: true);
             }
         }
     }
+    
     private async Task ApplyPromoCode()
     {
         promoMessage = string.Empty;
         finalTotal = totalAmount;
         discountAmount = 0;
+        
+        if (string.IsNullOrWhiteSpace(orderRequest.Code))
+        {
+            promoMessage = "❌ Vui lòng nhập mã giảm giá";
+            return;
+        }
+        
         var result = await PromoCodeService.ValidatePromoCodeAsync(
             orderRequest.Code!,
             cartItems.First().RestaurantID,
             totalAmount,
             cartItems.Sum(i => i.Quantity)
         );
+        
         if (!string.IsNullOrEmpty(result.Error))
         {
             promoMessage = $"❌ {result.Error}";
@@ -224,16 +239,30 @@ else
         }
     }
 
-
     private async Task HandleCheckout()
     {
         errorMessage = null;
+        if (string.IsNullOrWhiteSpace(orderRequest.PhoneNumber))
+        {
+            toastMessage = "❌ Vui lòng nhập số điện thoại!";
+            toastClass = "bg-danger";
+            return;
+        }
+        
+        if (string.IsNullOrWhiteSpace(orderRequest.DeliveryAddress))
+        {
+            toastMessage = "❌ Vui lòng nhập địa chỉ giao hàng!";
+            toastClass = "bg-danger";
+            return;
+        }
+        
         var orderDetails = cartItems.Select(item => new OrderDetailRequestDTO
         {
             MenuItemID = item.MenuItemID > 0 ? item.MenuItemID : (int?)null,
             ComboID = item.ComboID > 0 ? item.ComboID : (int?)null,
             Quantity = item.Quantity
         }).ToList();
+        
         int restaurantID = cartItems.First().RestaurantID;
 
         if (orderRequest.PaymentMethod == "COD")
@@ -245,6 +274,7 @@ else
                 toastClass = "bg-danger";
                 return;
             }
+            
             await CartService.ClearCartAsync();
             toastMessage = "🎉 Đặt hàng thành công!";
             toastClass = "bg-success";
@@ -260,13 +290,15 @@ else
                 toastClass = "bg-danger";
                 return;
             }
+            
             var momoResponse = await PaymentService.CreateMomoPaymentAsync(new OrderInfoDTO
             {
                 OrderInfo = "Thanh toán đơn hàng #" + order.OrderID,
-                FullName = order.DeliveryAddress ?? "Khách hàng",
+                FullName = orderRequest.DeliveryAddress ?? "Khách hàng",
                 Amount = (int)finalTotal,
                 OrderId = order.OrderID.ToString()
             });
+            
             if (momoResponse != null && !string.IsNullOrEmpty(momoResponse.PayUrl))
             {
                 Navigation.NavigateTo(momoResponse.PayUrl, forceLoad: true);
@@ -278,6 +310,4 @@ else
             }
         }
     }
-
-}
 }

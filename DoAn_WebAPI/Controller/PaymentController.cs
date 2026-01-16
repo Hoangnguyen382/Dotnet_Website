@@ -28,14 +28,25 @@ public class PaymentController : ControllerBase
     }
 
     [HttpGet("momo-return")]
-    public async Task<IActionResult> MomoReturn()
+    public async Task<IActionResult> MomoReturn([FromQuery] string orderId, [FromQuery] string errorCode)
     {
-        var result = await _momoService.PaymentExecuteAsync(Request.Query);
-        return Ok(result);
+        var redirectUrl = $"http://localhost:5255/checkout?orderId={orderId}&errorCode={errorCode}";
+        if (errorCode == "0")
+        {
+            await _orderService.MarkAsPaidAsync(orderId);
+        }
+        else
+        {
+            await _orderService.MarkAsFailedAsync(orderId);
+        }
+        
+        return Redirect(redirectUrl);
     }
+
     [HttpPost("momo-notify")]
     public async Task<IActionResult> MomoNotify([FromBody] MomoNotifyModel notify)
     {
+        // dùng để khi deploy thật
         // if (!_momoService.VerifySignature(notify))
         //     return BadRequest(new { message = "Invalid signature" });
 
@@ -50,5 +61,4 @@ public class PaymentController : ControllerBase
             return Ok(new { message = "Payment failed", orderId = notify.OrderId });
         }
     }
-
 }

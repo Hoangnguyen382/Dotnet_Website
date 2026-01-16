@@ -3,7 +3,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using DoAn_WebAPI.Models;
 using DoAn_WebAPI.Data;
-using Microsoft.EntityFrameworkCore;
 using DoAn_WebAPI.Interfaces.IService;
 using DoAn_WebAPI.Models.DTOs;
 using DoAn_WebAPI.Interfaces.IRepository;

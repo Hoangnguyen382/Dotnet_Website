@@ -155,7 +155,6 @@
                                     <InputNumber class="form-control" @bind-Value="promoRequest.MinOrderAmount" />
                                 </div>
                             }
-
                             @if (promoRequest.Type == PromoCodeType.QuantityDiscount)
                             {
                                 <div class="col-md-6">
@@ -169,11 +168,6 @@
                                 </div>
                             }
                             <div class="col-md-6">
-                                <label class="form-label">DiscountAmount</label>
-                                <InputNumber class="form-control" @bind-Value="promoRequest.DiscountAmount" />
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">RestaurantID</label>
                                 <InputNumber class="form-control" @bind-Value="promoRequest.RestaurantID" hidden />
                             </div>
 

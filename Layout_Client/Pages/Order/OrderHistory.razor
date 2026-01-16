@@ -260,7 +260,7 @@ else
         {
             if (item.ComboID != null && item.ComboID > 0)
             {
-                // Hiển combo cha
+
                 var combo = await ComboService.GetComboByIdAsync(item.ComboID.Value);
                 selectedOrderDetails.Add(new OrderDetailResponseDTO
                 {
@@ -271,7 +271,6 @@ else
                     UnitPrice = item.UnitPrice
                 });
 
-                // Thêm các món con trong combo
                 var comboDetails = await ComboService.GetComboDetailsByIdAsync(item.ComboID.Value);
                 foreach (var cd in comboDetails)
                 {
@@ -308,13 +307,10 @@ else
     {
         chattingOrderId = orderId;
 
-        // lấy hoặc tạo conversation
         var conversation = await ChatService.GetConversationByOrderAsync(orderId);
         if (conversation == null) return;
 
         currentConversationId = conversation.ConversationId;
-
-        // lấy lịch sử tin nhắn
         var msgs = await ChatService.GetMessagesAsync(currentConversationId);
         messages = msgs?.ToList() ?? new();
 

@@ -22,7 +22,6 @@ public class ChatService : IChatService
 
     public async Task<ConversationResponseDTO> CreateConversationAsync(CreateConversationRequestDTO dto)
     {
-        // nếu đã tồn tại conversation cho order thì trả về conversation hiện có
         var existing = await _convRepo.GetByOrderIdAsync(dto.OrderId);
         if (existing != null)
         {
@@ -93,7 +92,6 @@ public class ChatService : IChatService
 
     public async Task<MessageResponseDTO> SendMessageAsync(int userId, CreateMessageRequestDTO dto)
     {
-        // (1) check conversation exists
         var conv = await _convRepo.GetByIdAsync(dto.ConversationId);
         var user = await _userRepository.GetUserByIdAsync(userId);
         if (conv == null) throw new KeyNotFoundException("Conversation not found.");

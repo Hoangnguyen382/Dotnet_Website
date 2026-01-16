@@ -40,8 +40,7 @@ namespace Layout_Admin.Service
             return await client.GetFromJsonAsync<IEnumerable<MessageResponseDTO>>(
                 $"api/Chat/messages/{conversationId}?skip={skip}&take={take}");
         }
-
-        // Gửi message (qua REST API)
+        
         public async Task<MessageResponseDTO?> SendMessageAsync(CreateMessageRequestDTO dto)
         {
             var client = await _factory.CreateClientAsync();
@@ -49,7 +48,6 @@ namespace Layout_Admin.Service
             return await res.Content.ReadFromJsonAsync<MessageResponseDTO>();
         }
 
-        // Upload ảnh (server sẽ trả lại URL)
         public async Task<string?> UploadImageAsync(Stream fileStream, string fileName)
         {
             var client = await _factory.CreateClientAsync();

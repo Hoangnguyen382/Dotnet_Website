@@ -31,11 +31,10 @@ namespace Layout_Admin.Service
         public async Task<BestSellingItemDTO?> GetBestSellingItemTodayAsync(int restaurantId)
         {
             var client = await _factory.CreateClientAsync();
-            var response = await client.GetAsync($"api/dashboard/best-selling-item/{restaurantId}");
+            var response = await client.GetAsync($"api/Dashboard/bestseller/today/{restaurantId}");
 
             if (response.StatusCode == HttpStatusCode.NoContent)
             {
-                // Không có dữ liệu
                 return null;
             }
 
@@ -43,9 +42,6 @@ namespace Layout_Admin.Service
             {
                 return await response.Content.ReadFromJsonAsync<BestSellingItemDTO>();
             }
-
-            // Ghi log lỗi nếu cần
-            Console.WriteLine("Lỗi API: " + response.StatusCode);
             return null;
         }
 

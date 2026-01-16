@@ -52,6 +52,7 @@
                     VerificationToken = token,
                     IsEmailVerified = false,
                     Role = user.Role,
+                    RestaurantID = null
                 };
                 await _userRepository.CreateUserAsync(newUser);
                 // send email

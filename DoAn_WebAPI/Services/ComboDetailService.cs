@@ -59,20 +59,18 @@ namespace DoAn_WebAPI.Services
             if (menuItem == null || menuItem.RestaurantID != combo.RestaurantID)
                 throw new UnauthorizedAccessException("Món ăn không thuộc nhà hàng này.");
 
-            // ✅ Kiểm tra xem món ăn đã có trong combo chưa
+            // Kt món ăn trong cb
             var existingDetail = (await _comboDetailRepository.GetComboDetailsByComboIdAsync(dto.ComboID))
                                     .FirstOrDefault(d => d.MenuItemID == dto.MenuItemID);
 
             if (existingDetail != null)
             {
-                // Nếu đã có thì cộng thêm số lượng
                 existingDetail.Quantity += dto.Quantity;
                 var updated = await _comboDetailRepository.UpdateComboDetailAsync(existingDetail);
                 return MapToResponseDTO(updated);
             }
             else
             {
-                // Nếu chưa có thì thêm mới
                 var detail = new ComboDetail
                 {
                     ComboID = dto.ComboID,

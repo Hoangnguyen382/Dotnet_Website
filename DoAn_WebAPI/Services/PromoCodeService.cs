@@ -200,17 +200,13 @@ namespace DoAn_WebAPI.Services
                     return result;
                 }
 
-                if (promo.DiscountAmount is null or <= 0)
+                if (promo.DiscountPercent is null or <= 0)
                 {
                     result.Error = "Mã giảm giá không có giá trị giảm hợp lệ.";
                     return result;
                 }
 
-                discount += promo.DiscountAmount.Value;
-            }
-            if (promo.DiscountPercent.HasValue && promo.DiscountPercent.Value > 0)
-            {
-                discount += totalAmount * (promo.DiscountPercent.Value / 100);
+               discount = totalAmount * (promo.DiscountPercent.Value / 100);
             }
             result.Discount = discount;
             result.PromoCodeId = promo.PromoCodeID;

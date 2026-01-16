@@ -5,7 +5,7 @@ namespace DoAn_WebAPI.Models
     {
         [Key]
         public int UserID { get; set; }
-        public int RestaurantID { get; set; }
+        public int? RestaurantID { get; set; }
         [Required(ErrorMessage = "Name is required")]
         public string? Name { get; set; }
         [Required(ErrorMessage = "Email is required")]

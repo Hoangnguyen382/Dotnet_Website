@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DoAn_WebAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250721151730_AddSellingPriceInMenuItem")]
-    partial class AddSellingPriceInMenuItem
+    [Migration("20251117162335_InitialChangeUser")]
+    partial class InitialChangeUser
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -51,6 +51,114 @@ namespace DoAn_WebAPI.Migrations
                     b.ToTable("Categories");
                 });
 
+            modelBuilder.Entity("DoAn_WebAPI.Models.Combo", b =>
+                {
+                    b.Property<int>("ComboID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ComboID"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("RestaurantID")
+                        .HasColumnType("int");
+
+                    b.HasKey("ComboID");
+
+                    b.HasIndex("RestaurantID");
+
+                    b.ToTable("Combos");
+                });
+
+            modelBuilder.Entity("DoAn_WebAPI.Models.ComboDetail", b =>
+                {
+                    b.Property<int>("ComboDetailID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ComboDetailID"));
+
+                    b.Property<int>("ComboID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MenuItemID")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.HasKey("ComboDetailID");
+
+                    b.HasIndex("ComboID");
+
+                    b.HasIndex("MenuItemID");
+
+                    b.ToTable("ComboDetails");
+                });
+
+            modelBuilder.Entity("DoAn_WebAPI.Models.Conversation", b =>
+                {
+                    b.Property<int>("ConversationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ConversationId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RestaurantId")
+                        .HasColumnType("int");
+
+                    b.HasKey("ConversationId");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("Conversations");
+                });
+
+            modelBuilder.Entity("DoAn_WebAPI.Models.DTOs.BestSellingItemDTO", b =>
+                {
+                    b.Property<string>("BestSellingItem")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("QuantitySold")
+                        .HasColumnType("int");
+
+                    b.ToTable((string)null);
+
+                    b.ToView(null, (string)null);
+                });
+
             modelBuilder.Entity("DoAn_WebAPI.Models.DTOs.MenuItemRatingDTO", b =>
                 {
                     b.Property<double>("AverageRating")
@@ -67,7 +175,24 @@ namespace DoAn_WebAPI.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("RestaurantID")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RestaurantName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("ReviewCount")
+                        .HasColumnType("int");
+
+                    b.ToTable((string)null);
+
+                    b.ToView(null, (string)null);
+                });
+
+            modelBuilder.Entity("DoAn_WebAPI.Models.DTOs.OrderCountDTO", b =>
+                {
+                    b.Property<int>("OrderCountToday")
                         .HasColumnType("int");
 
                     b.ToTable((string)null);
@@ -92,6 +217,47 @@ namespace DoAn_WebAPI.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("ReviewCount")
+                        .HasColumnType("int");
+
+                    b.ToTable((string)null);
+
+                    b.ToView(null, (string)null);
+                });
+
+            modelBuilder.Entity("DoAn_WebAPI.Models.DTOs.RevenueTodayDTO", b =>
+                {
+                    b.Property<decimal>("RevenueToday")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.ToTable((string)null);
+
+                    b.ToView(null, (string)null);
+                });
+
+            modelBuilder.Entity("DoAn_WebAPI.Models.DTOs.RevenueWeekDTO", b =>
+                {
+                    b.Property<string>("DayOfWeek")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("OrderDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Revenue")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.ToTable((string)null);
+
+                    b.ToView(null, (string)null);
+                });
+
+            modelBuilder.Entity("DoAn_WebAPI.Models.DTOs.TopSellingItemMonthlyDTO", b =>
+                {
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("QuantitySold")
                         .HasColumnType("int");
 
                     b.ToTable((string)null);
@@ -146,6 +312,62 @@ namespace DoAn_WebAPI.Migrations
                     b.HasIndex("RestaurantID");
 
                     b.ToTable("MenuItems");
+                });
+
+            modelBuilder.Entity("DoAn_WebAPI.Models.Message", b =>
+                {
+                    b.Property<int>("MessageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MessageId"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int>("ConversationId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SenderId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SenderRole")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("MessageId");
+
+                    b.HasIndex("ConversationId");
+
+                    b.ToTable("Messages");
+                });
+
+            modelBuilder.Entity("DoAn_WebAPI.Models.MessageImage", b =>
+                {
+                    b.Property<int>("MessageImageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MessageImageId"));
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("MessageId")
+                        .HasColumnType("int");
+
+                    b.HasKey("MessageImageId");
+
+                    b.HasIndex("MessageId");
+
+                    b.ToTable("MessageImages");
                 });
 
             modelBuilder.Entity("DoAn_WebAPI.Models.Order", b =>
@@ -214,7 +436,10 @@ namespace DoAn_WebAPI.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OrderDetailID"));
 
-                    b.Property<int>("MenuItemID")
+                    b.Property<int?>("ComboID")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MenuItemID")
                         .HasColumnType("int");
 
                     b.Property<int>("OrderID")
@@ -227,6 +452,8 @@ namespace DoAn_WebAPI.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("OrderDetailID");
+
+                    b.HasIndex("ComboID");
 
                     b.HasIndex("MenuItemID");
 
@@ -273,9 +500,6 @@ namespace DoAn_WebAPI.Migrations
                     b.Property<int?>("MinQuantity")
                         .HasColumnType("int");
 
-                    b.Property<int?>("PromotionID")
-                        .HasColumnType("int");
-
                     b.Property<int>("RestaurantID")
                         .HasColumnType("int");
 
@@ -287,45 +511,9 @@ namespace DoAn_WebAPI.Migrations
 
                     b.HasKey("PromoCodeID");
 
-                    b.HasIndex("PromotionID");
-
                     b.HasIndex("RestaurantID");
 
                     b.ToTable("PromoCodes");
-                });
-
-            modelBuilder.Entity("DoAn_WebAPI.Models.Promotion", b =>
-                {
-                    b.Property<int>("PromotionID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PromotionID"));
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("DiscountPercent")
-                        .HasColumnType("decimal(5,2)");
-
-                    b.Property<DateTime?>("EndDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("RestaurantID")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("StartDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Title")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("PromotionID");
-
-                    b.HasIndex("RestaurantID");
-
-                    b.ToTable("Promotions");
                 });
 
             modelBuilder.Entity("DoAn_WebAPI.Models.Restaurant", b =>
@@ -371,7 +559,8 @@ namespace DoAn_WebAPI.Migrations
 
                     b.HasKey("RestaurantID");
 
-                    b.HasIndex("UserID");
+                    b.HasIndex("UserID")
+                        .IsUnique();
 
                     b.ToTable("Restaurants");
                 });
@@ -413,47 +602,6 @@ namespace DoAn_WebAPI.Migrations
                     b.ToTable("Reviews");
                 });
 
-            modelBuilder.Entity("DoAn_WebAPI.Models.TableReservation", b =>
-                {
-                    b.Property<int>("ReservationID")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ReservationID"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("NumberOfGuests")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("ReservationDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("RestaurantID")
-                        .HasColumnType("int");
-
-                    b.Property<string>("SpecialRequests")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<int>("UserID")
-                        .HasColumnType("int");
-
-                    b.HasKey("ReservationID");
-
-                    b.HasIndex("RestaurantID");
-
-                    b.HasIndex("UserID");
-
-                    b.ToTable("TableReservation");
-                });
-
             modelBuilder.Entity("DoAn_WebAPI.Models.User", b =>
                 {
                     b.Property<int>("UserID")
@@ -483,7 +631,7 @@ namespace DoAn_WebAPI.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("RestaurantID")
+                    b.Property<int?>("RestaurantID")
                         .HasColumnType("int");
 
                     b.Property<string>("Role")
@@ -509,6 +657,47 @@ namespace DoAn_WebAPI.Migrations
                     b.Navigation("Restaurant");
                 });
 
+            modelBuilder.Entity("DoAn_WebAPI.Models.Combo", b =>
+                {
+                    b.HasOne("DoAn_WebAPI.Models.Restaurant", "Restaurant")
+                        .WithMany()
+                        .HasForeignKey("RestaurantID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Restaurant");
+                });
+
+            modelBuilder.Entity("DoAn_WebAPI.Models.ComboDetail", b =>
+                {
+                    b.HasOne("DoAn_WebAPI.Models.Combo", "Combo")
+                        .WithMany("ComboDetails")
+                        .HasForeignKey("ComboID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DoAn_WebAPI.Models.MenuItem", "MenuItem")
+                        .WithMany("ComboDetails")
+                        .HasForeignKey("MenuItemID")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Combo");
+
+                    b.Navigation("MenuItem");
+                });
+
+            modelBuilder.Entity("DoAn_WebAPI.Models.Conversation", b =>
+                {
+                    b.HasOne("DoAn_WebAPI.Models.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Order");
+                });
+
             modelBuilder.Entity("DoAn_WebAPI.Models.MenuItem", b =>
                 {
                     b.HasOne("DoAn_WebAPI.Models.Category", "Category")
@@ -528,6 +717,28 @@ namespace DoAn_WebAPI.Migrations
                     b.Navigation("Restaurant");
                 });
 
+            modelBuilder.Entity("DoAn_WebAPI.Models.Message", b =>
+                {
+                    b.HasOne("DoAn_WebAPI.Models.Conversation", "Conversation")
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Conversation");
+                });
+
+            modelBuilder.Entity("DoAn_WebAPI.Models.MessageImage", b =>
+                {
+                    b.HasOne("DoAn_WebAPI.Models.Message", "Message")
+                        .WithMany("Images")
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Message");
+                });
+
             modelBuilder.Entity("DoAn_WebAPI.Models.Order", b =>
                 {
                     b.HasOne("DoAn_WebAPI.Models.PromoCode", "PromoCode")
@@ -543,7 +754,7 @@ namespace DoAn_WebAPI.Migrations
                     b.HasOne("DoAn_WebAPI.Models.User", "User")
                         .WithMany("Orders")
                         .HasForeignKey("UserID")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("PromoCode");
@@ -555,17 +766,23 @@ namespace DoAn_WebAPI.Migrations
 
             modelBuilder.Entity("DoAn_WebAPI.Models.OrderDetail", b =>
                 {
+                    b.HasOne("DoAn_WebAPI.Models.Combo", "Combo")
+                        .WithMany("OrderDetails")
+                        .HasForeignKey("ComboID")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("DoAn_WebAPI.Models.MenuItem", "MenuItem")
                         .WithMany("OrderDetails")
                         .HasForeignKey("MenuItemID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("DoAn_WebAPI.Models.Order", "Order")
                         .WithMany("OrderDetails")
                         .HasForeignKey("OrderID")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Combo");
 
                     b.Navigation("MenuItem");
 
@@ -574,25 +791,8 @@ namespace DoAn_WebAPI.Migrations
 
             modelBuilder.Entity("DoAn_WebAPI.Models.PromoCode", b =>
                 {
-                    b.HasOne("DoAn_WebAPI.Models.Promotion", "Promotion")
-                        .WithMany()
-                        .HasForeignKey("PromotionID");
-
                     b.HasOne("DoAn_WebAPI.Models.Restaurant", "Restaurant")
                         .WithMany()
-                        .HasForeignKey("RestaurantID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Promotion");
-
-                    b.Navigation("Restaurant");
-                });
-
-            modelBuilder.Entity("DoAn_WebAPI.Models.Promotion", b =>
-                {
-                    b.HasOne("DoAn_WebAPI.Models.Restaurant", "Restaurant")
-                        .WithMany("Promotions")
                         .HasForeignKey("RestaurantID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -603,9 +803,9 @@ namespace DoAn_WebAPI.Migrations
             modelBuilder.Entity("DoAn_WebAPI.Models.Restaurant", b =>
                 {
                     b.HasOne("DoAn_WebAPI.Models.User", "User")
-                        .WithMany("Restaurants")
-                        .HasForeignKey("UserID")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .WithOne("Restaurant")
+                        .HasForeignKey("DoAn_WebAPI.Models.Restaurant", "UserID")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("User");
@@ -636,35 +836,35 @@ namespace DoAn_WebAPI.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("DoAn_WebAPI.Models.TableReservation", b =>
-                {
-                    b.HasOne("DoAn_WebAPI.Models.Restaurant", "Restaurant")
-                        .WithMany("TableReservations")
-                        .HasForeignKey("RestaurantID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("DoAn_WebAPI.Models.User", "User")
-                        .WithMany("TableReservations")
-                        .HasForeignKey("UserID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Restaurant");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("DoAn_WebAPI.Models.Category", b =>
                 {
                     b.Navigation("MenuItems");
                 });
 
+            modelBuilder.Entity("DoAn_WebAPI.Models.Combo", b =>
+                {
+                    b.Navigation("ComboDetails");
+
+                    b.Navigation("OrderDetails");
+                });
+
+            modelBuilder.Entity("DoAn_WebAPI.Models.Conversation", b =>
+                {
+                    b.Navigation("Messages");
+                });
+
             modelBuilder.Entity("DoAn_WebAPI.Models.MenuItem", b =>
                 {
+                    b.Navigation("ComboDetails");
+
                     b.Navigation("OrderDetails");
 
                     b.Navigation("Reviews");
+                });
+
+            modelBuilder.Entity("DoAn_WebAPI.Models.Message", b =>
+                {
+                    b.Navigation("Images");
                 });
 
             modelBuilder.Entity("DoAn_WebAPI.Models.Order", b =>
@@ -680,22 +880,17 @@ namespace DoAn_WebAPI.Migrations
 
                     b.Navigation("Orders");
 
-                    b.Navigation("Promotions");
-
                     b.Navigation("Reviews");
-
-                    b.Navigation("TableReservations");
                 });
 
             modelBuilder.Entity("DoAn_WebAPI.Models.User", b =>
                 {
                     b.Navigation("Orders");
 
-                    b.Navigation("Restaurants");
+                    b.Navigation("Restaurant")
+                        .IsRequired();
 
                     b.Navigation("Reviews");
-
-                    b.Navigation("TableReservations");
                 });
 #pragma warning restore 612, 618
         }

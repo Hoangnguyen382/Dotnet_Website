@@ -56,7 +56,14 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Món bán chạy nhất</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">@(bestSellingItem?.BestSellingItem ?? "Chưa có món ăn")</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                @(bestSellingItem?.BestSellingItem ?? "Chưa có món")
+                                @if (bestSellingItem != null)
+                                {
+                                    <span style="color:#1e1f1e; font-size:0.9em; margin-left:5px; font-weight:600;"> - SL: @bestSellingItem.QuantitySold</span>
+                                }
+                            </div>
+
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-utensils fa-2x text-gray-300"></i>

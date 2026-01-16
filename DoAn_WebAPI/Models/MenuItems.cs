@@ -34,6 +34,7 @@ namespace DoAn_WebAPI.Models
         public virtual Restaurant? Restaurant { get; set; }
         public virtual Category? Category { get; set; }
         public virtual ICollection<OrderDetail>? OrderDetails { get; set; }
+        public virtual ICollection<ComboDetail>? ComboDetails { get; set; }
         public virtual ICollection<Review>? Reviews { get; set; }
     }
 }

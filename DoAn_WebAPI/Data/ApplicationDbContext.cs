@@ -27,7 +27,7 @@ namespace DoAn_WebAPI.Data
         public DbSet<OrderCountDTO> OrderCountResults { get; set; }
         public DbSet<BestSellingItemDTO> BestSellingItemResults { get; set; }
         public DbSet<TopSellingItemMonthlyDTO> TopSellingItemMonthlyResults { get; set; }
-        
+
         public DbSet<MenuItemRatingDTO> MenuItemRatingDTO { get; set; }
         public DbSet<RestaurantRatingDTO> RestaurantRatingDTO { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -36,17 +36,51 @@ namespace DoAn_WebAPI.Data
 
             modelBuilder.Entity<MenuItemRatingDTO>().HasNoKey().ToView(null);
             modelBuilder.Entity<RestaurantRatingDTO>().HasNoKey().ToView(null);
-            modelBuilder.Entity<RevenueTodayDTO>().HasNoKey();
-            modelBuilder.Entity<RevenueWeekDTO>().HasNoKey();
-            modelBuilder.Entity<OrderCountDTO>().HasNoKey();
-            modelBuilder.Entity<BestSellingItemDTO>().HasNoKey();
-            modelBuilder.Entity<TopSellingItemMonthlyDTO>().HasNoKey();
+            modelBuilder.Entity<RevenueTodayDTO>().HasNoKey().ToView(null);
+            modelBuilder.Entity<RevenueWeekDTO>().HasNoKey().ToView(null);
+            modelBuilder.Entity<OrderCountDTO>().HasNoKey().ToView(null);
+            modelBuilder.Entity<BestSellingItemDTO>().HasNoKey().ToView(null);
+            modelBuilder.Entity<TopSellingItemMonthlyDTO>().HasNoKey().ToView(null);
 
             modelBuilder.Entity<User>()
             .HasOne(u => u.Restaurant)
             .WithOne(r => r.User)
             .HasForeignKey<Restaurant>(r => r.UserID)
-            .IsRequired();
+            .IsRequired()
+            .OnDelete(DeleteBehavior.Restrict);
+            // ===== Users - Orders (1:N) =====
+            modelBuilder.Entity<Order>()
+                .HasOne(o => o.User)
+                .WithMany(u => u.Orders)
+                .HasForeignKey(o => o.UserID)
+                .OnDelete(DeleteBehavior.Restrict);
+            // ===== Orders - OrderDetails (1:N) =====
+            modelBuilder.Entity<OrderDetail>()
+                .HasOne(od => od.Order)
+                .WithMany(o => o.OrderDetails)
+                .HasForeignKey(od => od.OrderID)
+                .OnDelete(DeleteBehavior.Restrict);
+            // ===== OrderDetail - MenuItem (N:1) =====
+            modelBuilder.Entity<OrderDetail>()
+                .HasOne(od => od.MenuItem)
+                .WithMany(m => m.OrderDetails)
+                .HasForeignKey(od => od.MenuItemID)
+                .OnDelete(DeleteBehavior.Restrict);
+            // ===== OrderDetail - Combo (N:1) =====
+            modelBuilder.Entity<OrderDetail>()
+                .HasOne(od => od.Combo)
+                .WithMany(c => c.OrderDetails)
+                .HasForeignKey(od => od.ComboID)
+                .OnDelete(DeleteBehavior.Restrict);
+            // ===== ComboDetail - MenuItem  =====
+            modelBuilder.Entity<ComboDetail>()
+                .HasOne(cd => cd.MenuItem)
+                .WithMany(m => m.ComboDetails)
+                .HasForeignKey(cd => cd.MenuItemID)
+                .OnDelete(DeleteBehavior.Restrict); 
+
+
+
             // Conversation
             modelBuilder.Entity<Conversation>()
                 .HasKey(c => c.ConversationId);
@@ -79,9 +113,10 @@ namespace DoAn_WebAPI.Data
                 .Property(i => i.ImageUrl)
                 .IsRequired()
                 .HasMaxLength(500);
+
         }
 
     }
-    
+
 }
 
